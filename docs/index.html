@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>マクロ・ETF投資判断ダッシュボード</title>
+  <style>
+    :root {
+      --bg: #12151c;
+      --bg2: #1a1f2b;
+      --fg: #e8edf5;
+      --muted: #8b95a8;
+      --line: #2a3244;
+      --green: #3dcc8a;
+      --red: #ef6b6b;
+      --yellow: #e0b54a;
+      --must: #c45c5c;
+      --next: #3d7aab;
+      --adv: #6b6380;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.45;
+    }
+    header {
+      padding: 1.4rem 1.2rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg2);
+    }
+    h1 { margin: 0 0 .4rem; font-size: 1.35rem; font-weight: 650; }
+    .lede { color: var(--muted); margin: 0; font-size: .95rem; }
+    .meta { margin-top: .7rem; font-size: .9rem; color: var(--muted); }
+    .banner {
+      margin-top: .7rem;
+      padding: .55rem .75rem;
+      border-radius: 6px;
+      background: #2a2430;
+      color: #f0d9a8;
+      font-size: .9rem;
+    }
+    main { padding: 1rem 1.2rem 3rem; }
+    section { margin-bottom: 1.8rem; }
+    h2 {
+      font-size: 1.05rem;
+      margin: 0 0 .6rem;
+      font-weight: 600;
+    }
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: .75rem;
+      margin-bottom: .9rem;
+    }
+    .charts.must-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .55rem .65rem .35rem;
+    }
+    .card h3 {
+      margin: 0 0 .15rem;
+      font-size: .82rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      gap: .4rem;
+    }
+    .card .sub { color: var(--muted); font-size: .72rem; margin-bottom: .25rem; }
+    .card canvas { width: 100%; height: 120px; display: block; }
+    .must-grid .card canvas { height: 150px; }
+    .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; min-width: 1080px; }
+    th, td { padding: .42rem .5rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    th { background: #222836; color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+    tr:nth-child(even) td { background: #161b24; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    .up { color: var(--green); }
+    .down { color: var(--red); }
+    .warn { color: var(--yellow); }
+    .miss { color: var(--muted); }
+    .badge {
+      display: inline-block;
+      font-size: .68rem;
+      padding: .08rem .4rem;
+      border-radius: 999px;
+      color: #fff;
+      margin-right: .25rem;
+    }
+    .must { background: var(--must); }
+    .next { background: var(--next); }
+    .advanced { background: var(--adv); }
+    .ok { color: var(--green); }
+    .note { color: var(--muted); max-width: 220px; white-space: normal; font-size: .75rem; }
+    .mini { width: 120px; height: 32px; display: block; }
+    .tip {
+      position: fixed;
+      pointer-events: none;
+      background: #0e1218;
+      border: 1px solid var(--line);
+      color: var(--fg);
+      font-size: .75rem;
+      padding: .25rem .4rem;
+      border-radius: 4px;
+      display: none;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>マクロ・ETF投資判断ダッシュボード</h1>
+    <p class="lede">ETF購入のタイミング・銘柄選定のため、マクロ環境と各市場の動向を一目で把握する。グラフは約2年の終値（間引き）。</p>
+    <div class="meta" id="meta">読み込み中…（表示は JST）</div>
+    <div class="banner" id="banner" hidden></div>
+  </header>
+  <main id="main"></main>
+  <div class="tip" id="tip"></div>
+  <script>
+    const PRI = { must: "必須", next: "次に見る", advanced: "上級" };
+    const fmt = (v, d=2) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
+    const signed = (v) => {
+      if (v === null || v === undefined || Number.isNaN(v)) return { t: "—", c: "" };
+      const n = Number(v);
+      const t = (n > 0 ? "+" : "") + n.toFixed(2);
+      const c = n > 0 ? "up" : n < 0 ? "down" : "";
+      return { t, c };
+    };
+    function vixClass(last) {
+      if (last == null) return "";
+      if (last < 20) return "";
+      if (last < 30) return "warn";
+      return "down";
+    }
+    function lastClass(item) {
+      const th = item.thresholds || {};
+      if (th.vix) return vixClass(item.last);
+      if (th.invert_red && item.last != null && item.last < 0) return "down";
+      if (th.wider_is_red && item.chg_1d_pct != null && item.chg_1d_pct > 0) return "down";
+      return "";
+    }
+    function strokeColor(item) {
+      const v = item.chg_1d_pct;
+      if (v == null) return "#7aa2d4";
+      if (v > 0) return "#3dcc8a";
+      if (v < 0) return "#ef6b6b";
+      return "#7aa2d4";
+    }
+    function drawLine(canvas, item, pad) {
+      const hist = item.history || {};
+      const t = hist.t || [];
+      const v = hist.v || [];
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth || canvas.width;
+      const h = canvas.clientHeight || canvas.height;
+      canvas.width = Math.max(1, Math.floor(w * dpr));
+      canvas.height = Math.max(1, Math.floor(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      if (v.length < 2) {
+        ctx.fillStyle = "#8b95a8";
+        ctx.font = "12px sans-serif";
+        ctx.fillText("データなし", 8, h / 2);
+        return;
+      }
+      const lo = Math.min(...v);
+      const hi = Math.max(...v);
+      const span = hi - lo || 1;
+      const p = pad || { l: 4, r: 4, t: 6, b: 6 };
+      const x = (i) => p.l + i * (w - p.l - p.r) / (v.length - 1);
+      const y = (val) => p.t + (1 - (val - lo) / span) * (h - p.t - p.b);
+      const color = strokeColor(item);
+      ctx.beginPath();
+      ctx.moveTo(x(0), y(v[0]));
+      for (let i = 1; i < v.length; i++) ctx.lineTo(x(i), y(v[i]));
+      const lastY = y(v[v.length - 1]);
+      ctx.lineTo(x(v.length - 1), h - p.b);
+      ctx.lineTo(x(0), h - p.b);
+      ctx.closePath();
+      ctx.fillStyle = color + "22";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x(0), y(v[0]));
+      for (let i = 1; i < v.length; i++) ctx.lineTo(x(i), y(v[i]));
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x(v.length - 1), lastY, 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      canvas._chart = { t, v, x, y, w, h };
+    }
+    function bindHover(canvas, item) {
+      const tip = document.getElementById("tip");
+      canvas.addEventListener("mousemove", (ev) => {
+        const c = canvas._chart;
+        if (!c || !c.v.length) return;
+        const rect = canvas.getBoundingClientRect();
+        const px = ev.clientX - rect.left;
+        let best = 0, bestD = 1e9;
+        for (let i = 0; i < c.v.length; i++) {
+          const d = Math.abs(c.x(i) - px);
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        tip.style.display = "block";
+        tip.style.left = (ev.clientX + 12) + "px";
+        tip.style.top = (ev.clientY + 12) + "px";
+        tip.textContent = `${item.name}  ${c.t[best]}  ${fmt(c.v[best])}`;
+      });
+      canvas.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+    }
+    function chartCard(item, large) {
+      const miss = item.status !== "ok" || !(item.history && item.history.v && item.history.v.length > 1);
+      const ytd = signed(item.ytd_pct);
+      return `<article class="card">
+        <h3><span>${item.name}</span><span class="num ${ytd.c}">${ytd.t} YTD</span></h3>
+        <div class="sub">${item.market || ""} · ${item.ticker || ""} · ${item.last_date || "—"} · ${miss ? "データなし" : fmt(item.last)}</div>
+        <canvas class="spark" data-id="${item.id}" data-large="${large ? "1" : "0"}"></canvas>
+      </article>`;
+    }
+    function row(item) {
+      const miss = item.status !== "ok";
+      const chg = signed(item.chg_1d_pct);
+      const ytd = signed(item.ytd_pct);
+      const d200 = signed(item.dev_200d_pct);
+      const pri = item.priority || "next";
+      const lastCell = miss
+        ? `<td class="miss">データなし</td>`
+        : `<td class="num ${lastClass(item)}">${fmt(item.last)}</td>`;
+      const five = miss
+        ? `<td class="miss">—</td><td class="miss">—</td><td class="miss">—</td><td class="miss">—</td><td class="miss">—</td>`
+        : `<td class="num ${chg.c}">${chg.t}</td>
+           <td class="num ${ytd.c}">${ytd.t}</td>
+           <td class="num">${fmt(item.pos_52w_pct)}</td>
+           <td class="num ${d200.c}">${d200.t}</td>
+           <td class="num">${fmt(item.vol_1y_pct)}</td>`;
+      return `<tr>
+        <td><span class="badge ${pri}">${PRI[pri] || pri}</span>${item.market || ""}</td>
+        <td>${item.name || item.id}</td>
+        <td><canvas class="mini spark" data-id="${item.id}"></canvas></td>
+        <td class="note">${item.note || ""}</td>
+        <td>${item.ticker || ""}</td>
+        ${lastCell}
+        ${five}
+        <td>${item.last_date || "—"}</td>
+        <td class="${miss ? "miss" : "ok"}">${miss ? "missing" : "ok"}</td>
+      </tr>`;
+    }
+    function table(items) {
+      return `<div class="wrap"><table>
+        <thead><tr>
+          <th>市場 / 優先度</th><th>指標</th><th>推移</th><th>備考</th><th>ティッカー</th>
+          <th class="num">最終値</th><th class="num">前日比％</th><th class="num">年初来％</th>
+          <th class="num">52週位置％</th><th class="num">200日乖離％</th><th class="num">1年ボラ％</th>
+          <th>最終日付</th><th>status</th>
+        </tr></thead>
+        <tbody>${items.map(row).join("")}</tbody>
+      </table></div>`;
+    }
+    async function main() {
+      const res = await fetch("data/latest.json");
+      if (!res.ok) {
+        document.getElementById("meta").textContent = "latest.json がありません。";
+        return;
+      }
+      const data = await res.json();
+      document.getElementById("meta").textContent =
+        `最終更新（JST）: ${data.generated_at || "—"}　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
+      const banner = document.getElementById("banner");
+      if (data.missing_count) {
+        banner.hidden = false;
+        banner.textContent = `欠測 ${data.missing_count} 件（行は残し「データなし」表示）`;
+      }
+      const sections = data.sections || [];
+      const items = data.items || [];
+      const byId = Object.fromEntries(items.map(i => [i.id, i]));
+      const bySec = {};
+      for (const it of items) (bySec[it.section] ||= []).push(it);
+      const must = items.filter(i => i.priority === "must");
+      const mainEl = document.getElementById("main");
+      const mustHtml = `<section>
+        <h2>必須指標の推移</h2>
+        <div class="charts must-grid">${must.map(i => chartCard(i, true)).join("")}</div>
+      </section>`;
+      mainEl.innerHTML = mustHtml + sections.map(s => {
+        const rows = bySec[s.id] || [];
+        if (!rows.length) return "";
+        return `<section>
+          <h2>${s.title}</h2>
+          <div class="charts">${rows.map(i => chartCard(i, false)).join("")}</div>
+          ${table(rows)}
+        </section>`;
+      }).join("");
+      document.querySelectorAll("canvas.spark").forEach(cv => {
+        const item = byId[cv.dataset.id];
+        if (!item) return;
+        const large = cv.dataset.large === "1" || cv.classList.contains("mini") === false;
+        drawLine(cv, item, cv.classList.contains("mini") ? { l: 1, r: 1, t: 3, b: 3 } : { l: 6, r: 8, t: 8, b: 10 });
+        if (!cv.classList.contains("mini")) bindHover(cv, item);
+      });
+      window.addEventListener("resize", () => {
+        document.querySelectorAll("canvas.spark").forEach(cv => {
+          const item = byId[cv.dataset.id];
+          if (!item) return;
+          drawLine(cv, item, cv.classList.contains("mini") ? { l: 1, r: 1, t: 3, b: 3 } : { l: 6, r: 8, t: 8, b: 10 });
+        });
+      });
+    }
+    main().catch(e => {
+      document.getElementById("meta").textContent = "読み込み失敗: " + e;
+    });
+  </script>
+</body>
+</html>

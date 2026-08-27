@@ -1,0 +1,765 @@
+sections:
+  - id: s1_1
+    title: "1-1 先進国株価指数"
+  - id: s1_2
+    title: "1-2 新興国株価指数"
+  - id: s1_3
+    title: "1-3 米国セクター"
+  - id: s2_1
+    title: "2-1 先進国金利"
+  - id: s2_2
+    title: "2-2 イールドカーブ・スプレッド"
+  - id: s3
+    title: "3 インフレ・商品"
+  - id: s4
+    title: "4 為替"
+  - id: s5
+    title: "5 センチメント"
+  - id: s6
+    title: "6 主要ETF"
+
+instruments:
+  # 8.1 先進国株
+  - id: sp500
+    section: s1_1
+    market: 米国
+    name: S&P 500
+    symbol: "^GSPC"
+    priority: must
+    unit: 指数
+  - id: nasdaq100
+    section: s1_1
+    market: 米国
+    name: NASDAQ 100
+    symbol: "^NDX"
+    priority: must
+    unit: 指数
+  - id: russell2000
+    section: s1_1
+    market: 米国
+    name: ラッセル2000
+    symbol: "^RUT"
+    priority: next
+    unit: 指数
+  - id: nikkei225
+    section: s1_1
+    market: 日本
+    name: 日経平均株価
+    symbol: "^N225"
+    priority: must
+    unit: 指数
+  - id: topix
+    section: s1_1
+    market: 日本
+    name: TOPIX
+    symbol: "^TOPX"
+    symbol_fallbacks: ["1306.T"]
+    priority: must
+    unit: 指数
+    note: 指数欠測時は 1306（TOPIX ETF）で代用
+  - id: stoxx600
+    section: s1_1
+    market: 欧州
+    name: STOXX Europe 600
+    symbol: "^STOXX"
+    priority: next
+    unit: 指数
+    symbol_fallbacks: ["^STOXX50E", "EXSA.DE"]
+  - id: dax
+    section: s1_1
+    market: 欧州
+    name: DAX
+    symbol: "^GDAXI"
+    priority: next
+    unit: 指数
+  - id: cac40
+    section: s1_1
+    market: 欧州
+    name: CAC40
+    symbol: "^FCHI"
+    priority: next
+    unit: 指数
+  - id: ftse100
+    section: s1_1
+    market: 欧州（英国）
+    name: FTSE 100
+    symbol: "^FTSE"
+    priority: next
+    unit: 指数
+  - id: asx200
+    section: s1_1
+    market: その他先進
+    name: S&P/ASX 200
+    symbol: "^AXJO"
+    priority: advanced
+    unit: 指数
+  - id: tsx
+    section: s1_1
+    market: その他先進
+    name: S&P/TSX
+    symbol: "^GSPTSE"
+    priority: advanced
+    unit: 指数
+  - id: kospi
+    section: s1_1
+    market: その他先進
+    name: KOSPI
+    symbol: "^KS11"
+    priority: advanced
+    unit: 指数
+  - id: taiex
+    section: s1_1
+    market: その他先進
+    name: 台湾加権
+    symbol: "^TWII"
+    priority: advanced
+    unit: 指数
+
+  # 8.2 新興国
+  - id: msci_em
+    section: s1_2
+    market: グローバル
+    name: MSCI EM
+    symbol: "^MSCIEF"
+    symbol_fallbacks: ["EEM"]
+    priority: advanced
+    unit: 指数
+    note: 指数欠測時は EEM で代用
+  - id: nifty50
+    section: s1_2
+    market: インド
+    name: Nifty 50
+    symbol: "^NSEI"
+    priority: advanced
+    unit: 指数
+  - id: sse
+    section: s1_2
+    market: 中国・本土
+    name: 上海総合
+    symbol: "000001.SS"
+    priority: advanced
+    unit: 指数
+  - id: csi300
+    section: s1_2
+    market: 中国・本土
+    name: CSI 300
+    symbol: "000300.SS"
+    priority: advanced
+    unit: 指数
+  - id: hsi
+    section: s1_2
+    market: 中国・香港
+    name: ハンセン
+    symbol: "^HSI"
+    priority: advanced
+    unit: 指数
+  - id: hstech
+    section: s1_2
+    market: 中国・香港
+    name: ハンセンテック
+    symbol: "^HSTECH"
+    priority: advanced
+    unit: 指数
+  - id: bovespa
+    section: s1_2
+    market: ブラジル
+    name: Bovespa
+    symbol: "^BVSP"
+    priority: advanced
+    unit: 指数
+  - id: ipc
+    section: s1_2
+    market: メキシコ
+    name: IPC
+    symbol: "^MXX"
+    priority: advanced
+    unit: 指数
+  - id: vnindex
+    section: s1_2
+    market: ベトナム
+    name: VN-Index
+    symbol: "^VNINDEX.VN"
+    symbol_fallbacks: ["VNM"]
+    priority: advanced
+    unit: 指数
+    note: 欠測時は VNM で代用
+  - id: jci
+    section: s1_2
+    market: インドネシア
+    name: JCI
+    symbol: "^JKSE"
+    priority: advanced
+    unit: 指数
+
+  # 8.3 セクター
+  - id: xlk
+    section: s1_3
+    market: 米国
+    name: 情報技術
+    symbol: XLK
+    priority: next
+    unit: ETF
+  - id: xlf
+    section: s1_3
+    market: 米国
+    name: 金融
+    symbol: XLF
+    priority: next
+    unit: ETF
+  - id: xle
+    section: s1_3
+    market: 米国
+    name: エネルギー
+    symbol: XLE
+    priority: next
+    unit: ETF
+  - id: xlv
+    section: s1_3
+    market: 米国
+    name: ヘルスケア
+    symbol: XLV
+    priority: next
+    unit: ETF
+  - id: xlp
+    section: s1_3
+    market: 米国
+    name: 生活必需品
+    symbol: XLP
+    priority: next
+    unit: ETF
+  - id: xlu
+    section: s1_3
+    market: 米国
+    name: 公共事業
+    symbol: XLU
+    priority: next
+    unit: ETF
+  - id: xlre
+    section: s1_3
+    market: 米国
+    name: 不動産
+    symbol: XLRE
+    priority: next
+    unit: ETF
+  - id: xlb
+    section: s1_3
+    market: 米国
+    name: 資材
+    symbol: XLB
+    priority: next
+    unit: ETF
+  - id: xli
+    section: s1_3
+    market: 米国
+    name: 工業
+    symbol: XLI
+    priority: next
+    unit: ETF
+  - id: xlc
+    section: s1_3
+    market: 米国
+    name: 通信サービス
+    symbol: XLC
+    priority: next
+    unit: ETF
+  - id: xly
+    section: s1_3
+    market: 米国
+    name: 一般消費財
+    symbol: XLY
+    priority: next
+    unit: ETF
+
+  # 8.4 金利
+  - id: us_2y
+    section: s2_1
+    market: 米国
+    name: 米2年国債利回り
+    symbol: "^UST2YR"
+    symbol_fallbacks: ["2YY=F"]
+    priority: next
+    unit: 利回り％
+  - id: us_10y
+    section: s2_1
+    market: 米国
+    name: 米10年国債利回り
+    symbol: "^TNX"
+    priority: must
+    unit: 利回り％
+    scale_if_gt: 20
+    note: Yahoo が ×10 表示の場合は /10
+  - id: us_30y
+    section: s2_1
+    market: 米国
+    name: 米30年国債利回り
+    symbol: "^TYX"
+    priority: advanced
+    unit: 利回り％
+    scale_if_gt: 20
+  - id: us_tips_10y
+    section: s2_1
+    market: 米国
+    name: TIPS 10年実質金利
+    provider: fred
+    fred_series: DFII10
+    priority: advanced
+    unit: 利回り％
+    note: v1 は Yahoo に安定シンボルなし。FRED DFII10 後付け
+  - id: jp_10y
+    section: s2_1
+    market: 日本
+    name: 日本10年国債利回り
+    symbol: "JP10Y=RR"
+    priority: advanced
+    unit: 利回り％
+  - id: de_10y
+    section: s2_1
+    market: ドイツ
+    name: 独10年 Bund
+    symbol: "DE10Y=RR"
+    priority: advanced
+    unit: 利回り％
+  - id: uk_10y
+    section: s2_1
+    market: 英国
+    name: 英10年 Gilts
+    symbol: "GB10Y=RR"
+    priority: advanced
+    unit: 利回り％
+
+  # 8.5 カーブ
+  - id: us_2s10s
+    section: s2_2
+    market: 米国
+    name: 2s10s
+    provider: derived
+    derived: {minus: [us_10y, us_2y]}
+    priority: next
+    unit: パーセントポイント
+    note: 米10年 − 米2年
+    thresholds: {invert_red: true}
+  - id: us_10s30s
+    section: s2_2
+    market: 米国
+    name: 10s30s
+    provider: derived
+    derived: {minus: [us_30y, us_10y]}
+    priority: advanced
+    unit: パーセントポイント
+    note: 米30年 − 米10年
+  - id: hy_oas
+    section: s2_2
+    market: 米国
+    name: HY-OAS
+    provider: fred
+    fred_series: BAMLH0A0HYM2
+    priority: next
+    unit: bp
+    note: v1 missing（FRED 後付け）
+    thresholds: {wider_is_red: true}
+  - id: fra_ois
+    section: s2_2
+    market: 米国
+    name: FRA-OIS
+    provider: fred
+    priority: advanced
+    unit: bp
+    note: v1 missing（FRED 後付け）
+    thresholds: {wider_is_red: true}
+
+  # 8.6 商品
+  - id: wti
+    section: s3
+    market: エネルギー
+    name: WTI
+    symbol: "CL=F"
+    priority: next
+    unit: USD
+  - id: brent
+    section: s3
+    market: エネルギー
+    name: Brent
+    symbol: "BZ=F"
+    priority: next
+    unit: USD
+  - id: ng
+    section: s3
+    market: エネルギー
+    name: 天然ガス
+    symbol: "NG=F"
+    priority: advanced
+    unit: USD
+  - id: gold
+    section: s3
+    market: 貴金属
+    name: 金
+    symbol: "GC=F"
+    priority: next
+    unit: USD
+  - id: silver
+    section: s3
+    market: 貴金属
+    name: 銀
+    symbol: "SI=F"
+    priority: advanced
+    unit: USD
+  - id: copper
+    section: s3
+    market: 工業金属
+    name: 銅
+    symbol: "HG=F"
+    priority: next
+    unit: USD
+  - id: iron_ore
+    section: s3
+    market: 工業金属
+    name: 鉄鉱石
+    symbol: "TIO=F"
+    priority: advanced
+    unit: USD
+  - id: soybean
+    section: s3
+    market: 農産物
+    name: 大豆
+    symbol: "ZS=F"
+    priority: advanced
+    unit: USD
+  - id: wheat
+    section: s3
+    market: 農産物
+    name: 小麦
+    symbol: "ZW=F"
+    priority: advanced
+    unit: USD
+  - id: corn
+    section: s3
+    market: 農産物
+    name: トウモロコシ
+    symbol: "ZC=F"
+    priority: advanced
+    unit: USD
+
+  # 8.7 為替
+  - id: dxy
+    section: s4
+    market: ドル
+    name: DXY
+    symbol: "DX-Y.NYB"
+    priority: must
+    unit: 指数
+  - id: eurusd
+    section: s4
+    market: 先進
+    name: EUR/USD
+    symbol: "EURUSD=X"
+    priority: next
+    unit: レート
+  - id: gbpusd
+    section: s4
+    market: 先進
+    name: GBP/USD
+    symbol: "GBPUSD=X"
+    priority: next
+    unit: レート
+  - id: audusd
+    section: s4
+    market: 先進
+    name: AUD/USD
+    symbol: "AUDUSD=X"
+    priority: next
+    unit: レート
+  - id: usdcnh
+    section: s4
+    market: 新興
+    name: USD/CNH
+    symbol: "CNH=X"
+    priority: advanced
+    unit: レート
+  - id: usdcny
+    section: s4
+    market: 新興
+    name: USD/CNY
+    symbol: "CNY=X"
+    priority: advanced
+    unit: レート
+  - id: usdjpy
+    section: s4
+    market: 円
+    name: USD/JPY
+    symbol: "JPY=X"
+    priority: must
+    unit: レート
+  - id: eurjpy
+    section: s4
+    market: 円
+    name: EUR/JPY
+    symbol: "EURJPY=X"
+    priority: advanced
+    unit: レート
+  - id: chfjpy
+    section: s4
+    market: 円
+    name: CHF/JPY
+    symbol: "CHFJPY=X"
+    priority: advanced
+    unit: レート
+  - id: usdinr
+    section: s4
+    market: 新興
+    name: USD/INR
+    symbol: "INR=X"
+    priority: advanced
+    unit: レート
+  - id: usdbrl
+    section: s4
+    market: 新興
+    name: USD/BRL
+    symbol: "BRL=X"
+    priority: advanced
+    unit: レート
+  - id: usdkrw
+    section: s4
+    market: 新興
+    name: USD/KRW
+    symbol: "KRW=X"
+    priority: advanced
+    unit: レート
+  - id: usdtwd
+    section: s4
+    market: 新興
+    name: USD/TWD
+    symbol: "TWD=X"
+    priority: advanced
+    unit: レート
+
+  # 8.8 センチメント
+  - id: vix
+    section: s5
+    market: 米国
+    name: VIX
+    symbol: "^VIX"
+    priority: must
+    unit: 指数
+    thresholds: {vix: true}
+  - id: move
+    section: s5
+    market: 米国
+    name: MOVE
+    provider: fred
+    fred_series: MOVEINDEX
+    priority: advanced
+    unit: 指数
+    note: Yahoo に安定シンボルなし。FRED 後付け
+    thresholds: {wider_is_red: true}
+  - id: btc
+    section: s5
+    market: 暗号資産
+    name: BTC
+    symbol: BTC-USD
+    priority: next
+    unit: USD
+  - id: eth
+    section: s5
+    market: 暗号資産
+    name: ETH
+    symbol: ETH-USD
+    priority: next
+    unit: USD
+
+  # 8.9 ETF 米国株
+  - id: spy
+    section: s6
+    market: 米国株式
+    name: S&P 500
+    symbol: SPY
+    priority: next
+    unit: ETF
+    note: "併記: VOO, IVV"
+    listed_also: ["VOO", "IVV"]
+  - id: qqq
+    section: s6
+    market: 米国株式
+    name: NASDAQ 100
+    symbol: QQQ
+    priority: next
+    unit: ETF
+  - id: iwm
+    section: s6
+    market: 米国株式
+    name: ラッセル2000
+    symbol: IWM
+    priority: next
+    unit: ETF
+  - id: dia
+    section: s6
+    market: 米国株式
+    name: ダウ
+    symbol: DIA
+    priority: next
+    unit: ETF
+  - id: etf_nk225
+    section: s6
+    market: 日本株式
+    name: 日経225
+    provider: listed_jp
+    listed_jp: ["1321", "1322"]
+    priority: next
+    unit: ETF
+    note: 日本上場はティッカー併記のみ（価格取得なし）
+  - id: etf_topix
+    section: s6
+    market: 日本株式
+    name: TOPIX
+    provider: listed_jp
+    listed_jp: ["1306", "1308"]
+    priority: next
+    unit: ETF
+    note: 日本上場はティッカー併記のみ（価格取得なし）
+  - id: vgk
+    section: s6
+    market: 欧州
+    name: STOXX 600
+    symbol: VGK
+    priority: next
+    unit: ETF
+  - id: ezu
+    section: s6
+    market: 欧州
+    name: ユーロ圏
+    symbol: EZU
+    priority: next
+    unit: ETF
+  - id: ewg
+    section: s6
+    market: 欧州
+    name: ドイツ
+    symbol: EWG
+    priority: next
+    unit: ETF
+  - id: ewq
+    section: s6
+    market: 欧州
+    name: フランス
+    symbol: EWQ
+    priority: next
+    unit: ETF
+  - id: ewu
+    section: s6
+    market: 欧州
+    name: 英国
+    symbol: EWU
+    priority: next
+    unit: ETF
+  - id: eem
+    section: s6
+    market: 新興国・個別国
+    name: MSCI EM
+    symbol: EEM
+    priority: next
+    unit: ETF
+    note: "併記: VWO"
+    listed_also: ["VWO"]
+  - id: inda
+    section: s6
+    market: 新興国・個別国
+    name: インド
+    symbol: INDA
+    priority: next
+    unit: ETF
+  - id: ashr
+    section: s6
+    market: 新興国・個別国
+    name: 中国・本土
+    symbol: ASHR
+    priority: next
+    unit: ETF
+  - id: fxi
+    section: s6
+    market: 新興国・個別国
+    name: 中国・香港
+    symbol: FXI
+    priority: next
+    unit: ETF
+    note: "併記: 2801"
+    listed_jp: ["2801"]
+  - id: ewz
+    section: s6
+    market: 新興国・個別国
+    name: ブラジル
+    symbol: EWZ
+    priority: next
+    unit: ETF
+  - id: vnm
+    section: s6
+    market: 新興国・個別国
+    name: ベトナム
+    symbol: VNM
+    priority: next
+    unit: ETF
+  - id: ewy
+    section: s6
+    market: 新興国・個別国
+    name: 韓国
+    symbol: EWY
+    priority: next
+    unit: ETF
+  - id: ewt
+    section: s6
+    market: 新興国・個別国
+    name: 台湾
+    symbol: EWT
+    priority: next
+    unit: ETF
+  - id: acwi
+    section: s6
+    market: グローバル
+    name: ACWI
+    symbol: ACWI
+    priority: next
+    unit: ETF
+  - id: efa
+    section: s6
+    market: グローバル
+    name: EAFE
+    symbol: EFA
+    priority: next
+    unit: ETF
+    note: "併記: VEA"
+    listed_also: ["VEA"]
+  - id: tlt
+    section: s6
+    market: 債券
+    name: 米国債20年超
+    symbol: TLT
+    priority: next
+    unit: ETF
+  - id: ief
+    section: s6
+    market: 債券
+    name: 7-10年
+    symbol: IEF
+    priority: next
+    unit: ETF
+  - id: shy
+    section: s6
+    market: 債券
+    name: 1-3年
+    symbol: SHY
+    priority: next
+    unit: ETF
+  - id: hyg
+    section: s6
+    market: 債券
+    name: HY
+    symbol: HYG
+    priority: next
+    unit: ETF
+    note: "併記: JNK"
+    listed_also: ["JNK"]
+  - id: lqd
+    section: s6
+    market: 債券
+    name: IG 社債
+    symbol: LQD
+    priority: next
+    unit: ETF
