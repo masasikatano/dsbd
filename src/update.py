@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from src.compute import history_points, maybe_scale_series, metrics, spread, spread_series
-from src.providers import fred, yahoo
+from src.providers import eodhd, fred, yahoo
 
 log = logging.getLogger("update")
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +55,8 @@ def ticker_label(inst: dict) -> str:
         parts.append(str(s))
     if inst.get("provider") == "fred":
         parts.append(inst.get("fred_series") or "FRED")
+    if inst.get("provider") == "eodhd":
+        parts.append(inst.get("eodhd_symbol") or inst.get("symbol") or "EODHD")
     if inst.get("provider") == "derived":
         parts.append("derived")
     return ", ".join(parts)
@@ -98,6 +100,21 @@ def fetch_fred(inst: dict):
     series = fred.fetch(sid)
     if series is None:
         return missing(inst, "fred_no_data"), None
+    item, series = ok_from_series(inst, series)
+    item["resolved_symbol"] = sid
+    item["ticker"] = sid
+    return item, series
+
+
+def fetch_eodhd(inst: dict):
+    sid = inst.get("eodhd_symbol") or inst.get("symbol")
+    if not sid:
+        return missing(inst, "eodhd_no_symbol"), None
+    if not eodhd.has_key():
+        return missing(inst, "eodhd_no_key"), None
+    series = eodhd.fetch(sid, years=1)
+    if series is None:
+        return missing(inst, "eodhd_no_data"), None
     item, series = ok_from_series(inst, series)
     item["resolved_symbol"] = sid
     item["ticker"] = sid
@@ -158,6 +175,8 @@ def run() -> dict:
                 item["note"] = inst.get("note") or "日本上場はティッカー併記のみ"
             elif provider == "derived":
                 continue
+            elif provider == "eodhd":
+                item, series = fetch_eodhd(inst)
             elif provider == "yahoo":
                 item, series = fetch_yahoo(inst, cache)
             else:

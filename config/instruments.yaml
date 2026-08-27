@@ -143,9 +143,12 @@ instruments:
     section: s1_2
     market: 中国・本土
     name: CSI 300
+    provider: eodhd
+    eodhd_symbol: "000300.SHG"
     symbol: "000300.SS"
     priority: advanced
     unit: 指数
+    note: EODHD 約1年分（Yahoo は日次履歴なし）
   - id: hsi
     section: s1_2
     market: 中国・香港
@@ -180,11 +183,12 @@ instruments:
     section: s1_2
     market: ベトナム
     name: VN-Index
+    provider: eodhd
+    eodhd_symbol: "VNINDEX.INDX"
     symbol: "^VNINDEX.VN"
-    symbol_fallbacks: ["VNM"]
     priority: advanced
     unit: 指数
-    note: 欠測時は VNM で代用
+    note: EODHD 約1年分（Yahoo は日次履歴なし）
   - id: jci
     section: s1_2
     market: インドネシア
@@ -365,15 +369,6 @@ instruments:
     unit: bp
     note: FRED BAMLH0A0HYM2
     thresholds: {wider_is_red: true}
-  - id: fra_ois
-    section: s2_2
-    market: 米国
-    name: FRA-OIS
-    provider: fred
-    priority: advanced
-    unit: bp
-    note: 無料ソースに安定シリーズなし。取得できず「データなし」
-    thresholds: {wider_is_red: true}
 
   # 8.6 商品
   - id: wti
@@ -480,9 +475,12 @@ instruments:
     section: s4
     market: 新興
     name: USD/CNH
+    provider: eodhd
+    eodhd_symbol: "USDCNH.FOREX"
     symbol: "CNH=X"
     priority: advanced
     unit: レート
+    note: EODHD 約1年分（Yahoo は日次履歴なし）
   - id: usdcny
     section: s4
     market: 新興

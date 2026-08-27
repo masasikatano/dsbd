@@ -22,6 +22,6 @@ PORT=9000 ./run_local.sh
 
 GitHub Actions（`.github/workflows/update.yml`）が平日 21:30 UTC と手動 `workflow_dispatch` で Yahoo Finance（および設定時は FRED）から終値を取り、`latest.json` を `[skip ci]` 付きで `main` に push します。`GITHUB_TOKEN` に `contents: write` が必要です。
 
-TIPS 10年・HY-OAS・MOVE・先進国 10 年のフォールバックには [FRED](https://fred.stlouisfed.org/) を使います。ローカルは `.env` に `FRED_API_KEY=...`（git 対象外）。Actions はリポジトリ secret `FRED_API_KEY` を渡します。未設定でもジョブは成功し、FRED 依存行だけ「データなし」になります。キーを JSON やログに出しません。
+TIPS 10年・HY-OAS・MOVE・先進国 10 年のフォールバックには [FRED](https://fred.stlouisfed.org/) を使います。CSI 300・VN-Index・USD/CNH は Yahoo が日次履歴を返さないため [EODHD](https://eodhd.com/) から約1年分を取ります。ローカルは `.env` に `FRED_API_KEY` と `EODHD_API_KEY`（git 対象外）。Actions は同名のリポジトリ secret を渡します。未設定でもジョブは成功し、依存行だけ「データなし」になります。キーを JSON やログに出しません。
 
-欠測しても表の行は残し「データなし」と出します。意図して埋めないのは FRA-OIS のみ（無料ソースに安定シリーズがないため）。詳細は [`spec_v2.md`](spec_v2.md) です。
+欠測しても表の行は残し「データなし」と出します。クレジットスプレッドは HY-OAS（FRED）を出します。FRA-OIS は無料ソースに安定シリーズがないため載せていません。
