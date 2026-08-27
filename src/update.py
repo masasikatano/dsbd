@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -12,11 +13,30 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from src.compute import history_points, maybe_scale_series, metrics, spread, spread_series
-from src.providers import yahoo
+from src.providers import fred, yahoo
 
 log = logging.getLogger("update")
 ROOT = Path(__file__).resolve().parents[1]
 JST = ZoneInfo("Asia/Tokyo")
+
+
+def load_dotenv() -> None:
+    path = ROOT / ".env"
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        key, _, val = line.partition("=")
+        key = key.strip()
+        val = val.strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        if key and key not in os.environ:
+            os.environ[key] = val
 
 
 def load_config() -> dict:
@@ -69,7 +89,22 @@ def ok_from_series(inst: dict, series) -> dict:
     return item, series
 
 
-def fetch_yahoo(inst: dict, cache: dict):
+def fetch_fred(inst: dict):
+    sid = inst.get("fred_series")
+    if not sid:
+        return missing(inst, "fred_no_series"), None
+    if not fred.has_key():
+        return missing(inst, "fred_no_key"), None
+    series = fred.fetch(sid)
+    if series is None:
+        return missing(inst, "fred_no_data"), None
+    item, series = ok_from_series(inst, series)
+    item["resolved_symbol"] = sid
+    item["ticker"] = sid
+    return item, series
+
+
+def fetch_yahoo(inst: dict, cache: dict, allow_fred: bool = True):
     symbols = [inst.get("symbol")] + list(inst.get("symbol_fallbacks") or [])
     used, series = None, None
     for s in symbols:
@@ -81,15 +116,19 @@ def fetch_yahoo(inst: dict, cache: dict):
         if used and series is not None:
             cache[used] = series
     if series is None:
+        if allow_fred and inst.get("fred_series"):
+            return fetch_fred(inst)
         return missing(inst, "yahoo_no_data"), None
     item, series = ok_from_series(inst, series)
-    if used and used != inst.get("symbol"):
-        item["ticker"] = used + (f" ({item['ticker']})" if item.get("ticker") else "")
+    if used:
         item["resolved_symbol"] = used
+        if used != inst.get("symbol") or inst.get("provider") == "fred":
+            item["ticker"] = used + (f" ({item['ticker']})" if item.get("ticker") else "")
     return item, series
 
 
 def run() -> dict:
+    load_dotenv()
     cfg = load_config()
     instruments = cfg["instruments"]
     by_id: dict[str, dict] = {}
@@ -97,10 +136,10 @@ def run() -> dict:
 
     yahoo_syms: list[str] = []
     for inst in instruments:
-        if (inst.get("provider") or "yahoo") != "yahoo":
-            continue
-        yahoo_syms.append(inst.get("symbol"))
-        yahoo_syms.extend(inst.get("symbol_fallbacks") or [])
+        provider = inst.get("provider") or "yahoo"
+        if provider == "yahoo" or (provider == "fred" and inst.get("symbol")):
+            yahoo_syms.append(inst.get("symbol"))
+            yahoo_syms.extend(inst.get("symbol_fallbacks") or [])
     cache = yahoo.fetch_many([s for s in yahoo_syms if s])
     series_store: dict = {}
 
@@ -109,7 +148,11 @@ def run() -> dict:
         series = None
         try:
             if provider == "fred":
-                item = missing(inst, "fred_not_implemented")
+                item, series = fetch_fred(inst)
+                if series is None and inst.get("symbol"):
+                    yitem, yseries = fetch_yahoo(inst, cache, allow_fred=False)
+                    if yseries is not None:
+                        item, series = yitem, yseries
             elif provider == "listed_jp":
                 item = missing(inst, "listed_jp_no_price")
                 item["note"] = inst.get("note") or "日本上場はティッカー併記のみ"
@@ -189,6 +232,7 @@ def run() -> dict:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    load_dotenv()
     payload = run()
     out = ROOT / "docs" / "data" / "latest.json"
     out.parent.mkdir(parents=True, exist_ok=True)

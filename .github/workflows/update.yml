@@ -19,6 +19,8 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
       - name: Fetch and compute
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python -m src.update
       - name: Commit snapshot
         run: |

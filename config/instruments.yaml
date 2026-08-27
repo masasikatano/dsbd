@@ -158,8 +158,10 @@ instruments:
     market: 中国・香港
     name: ハンセンテック
     symbol: "^HSTECH"
+    symbol_fallbacks: ["HSTECH.HI", "3032.HK"]
     priority: advanced
     unit: 指数
+    note: 指数欠測時は 3032.HK で代用
   - id: bovespa
     section: s1_2
     market: ブラジル
@@ -304,28 +306,34 @@ instruments:
     fred_series: DFII10
     priority: advanced
     unit: 利回り％
-    note: v1 は Yahoo に安定シンボルなし。FRED DFII10 後付け
+    note: FRED DFII10
   - id: jp_10y
     section: s2_1
     market: 日本
     name: 日本10年国債利回り
     symbol: "JP10Y=RR"
+    fred_series: IRLTLT01JPM156N
     priority: advanced
     unit: 利回り％
+    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
   - id: de_10y
     section: s2_1
     market: ドイツ
     name: 独10年 Bund
     symbol: "DE10Y=RR"
+    fred_series: IRLTLT01DEM156N
     priority: advanced
     unit: 利回り％
+    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
   - id: uk_10y
     section: s2_1
     market: 英国
     name: 英10年 Gilts
     symbol: "GB10Y=RR"
+    fred_series: IRLTLT01GBM156N
     priority: advanced
     unit: 利回り％
+    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
 
   # 8.5 カーブ
   - id: us_2s10s
@@ -355,7 +363,7 @@ instruments:
     fred_series: BAMLH0A0HYM2
     priority: next
     unit: bp
-    note: v1 missing（FRED 後付け）
+    note: FRED BAMLH0A0HYM2
     thresholds: {wider_is_red: true}
   - id: fra_ois
     section: s2_2
@@ -364,7 +372,7 @@ instruments:
     provider: fred
     priority: advanced
     unit: bp
-    note: v1 missing（FRED 後付け）
+    note: 無料ソースに安定シリーズなし。取得できず「データなし」
     thresholds: {wider_is_red: true}
 
   # 8.6 商品
@@ -547,9 +555,10 @@ instruments:
     name: MOVE
     provider: fred
     fred_series: MOVEINDEX
+    symbol: "^MOVE"
     priority: advanced
     unit: 指数
-    note: Yahoo に安定シンボルなし。FRED 後付け
+    note: FRED MOVEINDEX。欠測時は Yahoo ^MOVE
     thresholds: {wider_is_red: true}
   - id: btc
     section: s5
@@ -601,20 +610,22 @@ instruments:
     section: s6
     market: 日本株式
     name: 日経225
-    provider: listed_jp
-    listed_jp: ["1321", "1322"]
+    symbol: "1321.T"
+    symbol_fallbacks: ["1322.T"]
+    listed_also: ["1322"]
     priority: next
     unit: ETF
-    note: 日本上場はティッカー併記のみ（価格取得なし）
+    note: 日本上場。価格は Yahoo `.T`。欠測時はデータなし
   - id: etf_topix
     section: s6
     market: 日本株式
     name: TOPIX
-    provider: listed_jp
-    listed_jp: ["1306", "1308"]
+    symbol: "1306.T"
+    symbol_fallbacks: ["1308.T"]
+    listed_also: ["1308"]
     priority: next
     unit: ETF
-    note: 日本上場はティッカー併記のみ（価格取得なし）
+    note: 日本上場。価格は Yahoo `.T`。欠測時はデータなし
   - id: vgk
     section: s6
     market: 欧州
