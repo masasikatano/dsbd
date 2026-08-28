@@ -53,10 +53,10 @@ instruments:
     market: 日本
     name: TOPIX
     symbol: "^TOPX"
-    symbol_fallbacks: ["1306.T"]
+    symbol_fallbacks: ["1308.T", "1306.T"]
     priority: must
     unit: 指数
-    note: 指数欠測時は 1306（TOPIX ETF）で代用
+    note: 指数欠測時は 1308（TOPIX ETF）で代用、1308 も欠測時は 1306 で代用
   - id: stoxx600
     section: s1_1
     market: 欧州
@@ -618,9 +618,9 @@ instruments:
     section: s6
     market: 日本株式
     name: TOPIX
-    symbol: "1306.T"
-    symbol_fallbacks: ["1308.T"]
-    listed_also: ["1308"]
+    symbol: "1308.T"
+    symbol_fallbacks: ["1306.T"]
+    listed_also: ["1306"]
     priority: next
     unit: ETF
     note: 日本上場。価格は Yahoo `.T`。欠測時はデータなし
