@@ -316,9 +316,9 @@ SENSEX は出さない（草案どおり Nifty 主戦）。
 | id | ペア | symbol | priority |
 |----|------|--------|----------|
 | dxy | DXY | `DX-Y.NYB` | must |
-| eurusd | EUR/USD | `EURUSD=X` | next |
-| gbpusd | GBP/USD | `GBPUSD=X` | next |
-| audusd | AUD/USD | `AUDUSD=X` | next |
+| eurusd | USD/EUR | `USDEUR=X` | next |
+| gbpusd | USD/GBP | `USDGBP=X` | next |
+| audusd | USD/AUD | `USDAUD=X` | next |
 | usdcnh | USD/CNH | `CNH=X` | advanced |
 | usdcny | USD/CNY | `CNY=X` | advanced |
 | usdjpy | USD/JPY | `JPY=X` | must |

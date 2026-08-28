@@ -456,22 +456,22 @@ instruments:
   - id: eurusd
     section: s4
     market: 先進
-    name: EUR/USD
-    symbol: "EURUSD=X"
+    name: USD/EUR
+    symbol: "USDEUR=X"
     priority: next
     unit: レート
   - id: gbpusd
     section: s4
     market: 先進
-    name: GBP/USD
-    symbol: "GBPUSD=X"
+    name: USD/GBP
+    symbol: "USDGBP=X"
     priority: next
     unit: レート
   - id: audusd
     section: s4
     market: 先進
-    name: AUD/USD
-    symbol: "AUDUSD=X"
+    name: USD/AUD
+    symbol: "USDAUD=X"
     priority: next
     unit: レート
   - id: usdcnh
