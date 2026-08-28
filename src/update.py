@@ -251,6 +251,7 @@ def run() -> dict:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    logging.getLogger("yfinance").setLevel(logging.CRITICAL)
     load_dotenv()
     payload = run()
     out = ROOT / "docs" / "data" / "latest.json"

@@ -315,29 +315,32 @@ instruments:
     section: s2_1
     market: 日本
     name: 日本10年国債利回り
-    symbol: "JP10Y=RR"
+    provider: fred
     fred_series: IRLTLT01JPM156N
+    symbol: "JP10Y=RR"
     priority: advanced
     unit: 利回り％
-    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
+    note: FRED OECD 長期金利。FRED 欠測時は Yahoo JP10Y=RR（観測頻度はソース依存）
   - id: de_10y
     section: s2_1
     market: ドイツ
     name: 独10年 Bund
-    symbol: "DE10Y=RR"
+    provider: fred
     fred_series: IRLTLT01DEM156N
+    symbol: "DE10Y=RR"
     priority: advanced
     unit: 利回り％
-    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
+    note: FRED OECD 長期金利。FRED 欠測時は Yahoo DE10Y=RR（観測頻度はソース依存）
   - id: uk_10y
     section: s2_1
     market: 英国
     name: 英10年 Gilts
-    symbol: "GB10Y=RR"
+    provider: fred
     fred_series: IRLTLT01GBM156N
+    symbol: "GB10Y=RR"
     priority: advanced
     unit: 利回り％
-    note: Yahoo 欠測時は FRED OECD 長期金利（観測頻度はソース依存）
+    note: FRED OECD 長期金利。FRED 欠測時は Yahoo GB10Y=RR（観測頻度はソース依存）
 
   # 8.5 カーブ
   - id: us_2s10s
@@ -551,12 +554,11 @@ instruments:
     section: s5
     market: 米国
     name: MOVE
-    provider: fred
-    fred_series: MOVEINDEX
+    provider: yahoo
     symbol: "^MOVE"
     priority: advanced
     unit: 指数
-    note: FRED MOVEINDEX。欠測時は Yahoo ^MOVE
+    note: Yahoo ^MOVE
     thresholds: {wider_is_red: true}
   - id: btc
     section: s5
