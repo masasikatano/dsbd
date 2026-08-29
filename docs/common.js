@@ -85,6 +85,8 @@ function drawLine(canvas, item, pad) {
 function bindHover(canvas, item) {
   const tip = document.getElementById("tip");
   if (!tip) return;
+  let currentText = "";
+  let savedText = "";
   canvas.addEventListener("mousemove", (ev) => {
     const c = canvas._chart;
     if (!c || !c.v.length) return;
@@ -95,12 +97,21 @@ function bindHover(canvas, item) {
       const d = Math.abs(c.x(i) - px);
       if (d < bestD) { bestD = d; best = i; }
     }
+    currentText = `${item.name} ${c.t[best]} ${fmt(c.v[best])}`;
     tip.style.display = "block";
     tip.style.left = (ev.clientX + 12) + "px";
     tip.style.top = (ev.clientY + 12) + "px";
-    tip.textContent = `${item.name}  ${c.t[best]}  ${fmt(c.v[best])}`;
+    tip.textContent = currentText;
   });
   canvas.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  canvas.addEventListener("click", () => {
+    if (!currentText || !navigator.clipboard) return;
+    navigator.clipboard.writeText(currentText).then(() => {
+      savedText = tip.textContent;
+      tip.textContent = "コピーしました";
+      setTimeout(() => { tip.textContent = savedText; }, 800);
+    }).catch(() => {});
+  });
 }
 
 function bindClick(canvas, item) {
