@@ -1,0 +1,23 @@
+{
+  "project": {
+    "name": "macro-etf-dashboard",
+    "description": "Static dashboard for macro / ETF investment decisions. Kimi Code is the sole coding agent; Claude is read-only / advisory.",
+    "docs": [
+      "README.md",
+      "architecture.md",
+      "spec.md",
+      "spec_v2.md"
+    ]
+  },
+  "behavior": {
+    "allowFileEdits": false,
+    "allowGitOperations": false,
+    "allowDependencyInstallation": false,
+    "askBeforeRunningDestructiveCommands": true
+  },
+  "notes": [
+    "Do not edit code, config, or documentation without explicit user approval.",
+    "Direct coding requests to Kimi Code.",
+    "Use /commands for common read-only tasks."
+  ]
+}

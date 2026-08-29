@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "description": "MCP server configuration for the macro/ETF dashboard project.",
+  "servers": {},
+  "notes": [
+    "Add MCP servers here only when the project needs external tool access (e.g. web search, docs fetch).",
+    "Keep secrets out of this file; use environment variables or repository secrets instead."
+  ]
+}

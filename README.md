@@ -32,3 +32,60 @@ GitHub Actions（`.github/workflows/update.yml`）が平日 21:30 UTC と手動 
 TIPS 10年・HY-OAS・MOVE・先進国 10 年のフォールバックには [FRED](https://fred.stlouisfed.org/) を使います。CSI 300・VN-Index・USD/CNH は Yahoo が日次履歴を返さないため [EODHD](https://eodhd.com/) から約1年分を取ります。ローカルは `.env` に `FRED_API_KEY` と `EODHD_API_KEY`（git 対象外）。Actions は同名のリポジトリ secret を渡します。未設定でもジョブは成功し、依存行だけ「データなし」になります。キーを JSON やログに出しません。
 
 欠測しても表の行は残し「データなし」と出します。クレジットスプレッドは HY-OAS（FRED）を出します。FRA-OIS は無料ソースに安定シリーズがないため載せていません。
+
+---
+
+## AI エージェント向けガイドライン
+
+> **原則: 本プロジェクトのコーディングは Kimi Code のみが行う。**
+> Claude、Antigravity、その他の AI エージェントは、コード変更を行わない。読み取り、質問、レビュー、提案は可能。
+
+### 役割分担
+
+| エージェント | 許可される行為 | 禁止事項 |
+|-------------|--------------|---------|
+| Kimi Code | 設計、実装、テスト、リファクタリング、ドキュメント更新 | なし |
+| Claude / Antigravity / その他 | コードの読み取り、質問への回答、レビューコメント、設計提案 | ファイル編集、コミット、プッシュ、ブランチ操作、依存追加 |
+
+### プロジェクト構造
+
+```
+config/instruments.yaml  # 指標定義（id, provider, symbol, 閾値など）
+src/
+  update.py              # 取得・計算・JSON 出力のオーケストレーション
+  compute.py             # 5 指標・派生スプレッド計算
+  providers/             # Yahoo, FRED, EODHD の共通 Provider 実装
+    base.py              # Provider プロトコル / FetchResult
+docs/
+  index.html             # 単一 HTML UI
+  data/latest.json       # 生成済みスナップショット（git 管理）
+tests/                   # pytest 単体テスト
+```
+
+### コーディングを依頼された場合
+
+コード変更が必要な依頼を受けたら、**必ずユーザーに「Kimi Code に任せてください」と伝え、自身は編集しない**。理由:
+
+- 複数エージェントが同時に編集すると設定・方針が分断される。
+- `spec.md` / `spec_v2.md` で固定された仕様を逸脱するリスクがある。
+- テスト (`pytest -q`) と `python -m src.update` は必須の検証である。
+
+### 読み取り・レビュー時の注意
+
+- `config/instruments.yaml` は単一の真実源として扱う。
+- `src/providers/base.py` の `Provider` / `FetchResult` / `ErrorCode` を参照し、各プロバイダが共通インタフェースに従っているか確認する。
+- 新しいデータソースを追加したい場合は、まず `src/providers/base.py` の拡張を検討し、Kimi Code に提案する。
+- UI (`docs/index.html`) はビルドツールなしの単一ファイル。CSS/JS を追加する場合も Kimi Code が対応する。
+
+### 検証コマンド
+
+```bash
+# テスト
+pytest -q
+
+# ダッシュボードデータ更新
+python -m src.update
+
+# ローカル確認
+./run_local.sh
+```
