@@ -79,6 +79,48 @@ function drawLine(canvas, item, pad) {
   ctx.arc(x(v.length - 1), lastY, 2.4, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
+
+  if (pad && pad.drawDates && t.length) {
+    ctx.strokeStyle = "#2a3244";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.l, h - p.b + 0.5);
+    ctx.lineTo(w - p.r, h - p.b + 0.5);
+    ctx.stroke();
+
+    ctx.fillStyle = "#8b95a8";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    const months = [];
+    for (let i = 0; i < t.length; i++) {
+      const m = String(t[i] || "").match(/^(\d{4})-(\d{2})/);
+      if (!m) continue;
+      const key = `${m[1]}-${m[2]}`;
+      const label = `${m[1]}/${m[2]}`;
+      // 同じ月が複数ある場合は最後（月末寄り）を採用
+      if (months.length && months[months.length - 1].key === key) {
+        months[months.length - 1].idx = i;
+      } else {
+        months.push({ key, label, idx: i });
+      }
+    }
+
+    if (months.length) {
+      const plotW = Math.max(1, w - p.l - p.r);
+      const target = Math.max(2, Math.floor(plotW / 64));
+      const step = Math.max(1, Math.ceil((months.length - 1) / (target - 1)));
+      const selected = [months[0]];
+      for (let i = step; i < months.length - 1; i += step) selected.push(months[i]);
+      if (months.length > 1) selected.push(months[months.length - 1]);
+
+      for (const m of selected) {
+        ctx.fillText(m.label, x(m.idx), h - p.b + 5);
+      }
+    }
+  }
+
   canvas._chart = { t, v, x, y, w, h };
 }
 

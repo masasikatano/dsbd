@@ -180,7 +180,7 @@
       `;
 
       const canvas = document.getElementById("chart");
-      drawLine(canvas, item, { l: 8, r: 12, t: 12, b: 16 });
+      drawLine(canvas, item, { l: 8, r: 12, t: 12, b: 28, drawDates: true });
       bindHover(canvas, item);
     }
     function renderNotFound(message) {
@@ -209,7 +209,7 @@
       renderDetail(item);
       window.addEventListener("resize", () => {
         const canvas = document.getElementById("chart");
-        if (canvas) drawLine(canvas, item, { l: 8, r: 12, t: 12, b: 16 });
+        if (canvas) drawLine(canvas, item, { l: 8, r: 12, t: 12, b: 28, drawDates: true });
       });
     }
     main().catch(e => {
