@@ -16,6 +16,13 @@ venv 作成、依存インストール、`python -m src.update`、`docs/` の簡
 PORT=9000 ./run_local.sh
 ```
 
+## テスト
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
+
 ## GitHub Pages
 
 リポジトリ Settings → Pages → **Deploy from a branch** → Branch: `main`、Folder: `/docs`。カスタムドメインは使いません。閲覧制限はありません。

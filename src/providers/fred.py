@@ -1,4 +1,4 @@
-"""FRED observations. Returns None when the key is missing or a series fails."""
+"""FRED observations provider."""
 
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from src.providers.base import ErrorCode, FetchResult
+
 log = logging.getLogger(__name__)
 
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
@@ -22,17 +24,29 @@ def has_key() -> bool:
     return bool(os.environ.get("FRED_API_KEY"))
 
 
-def fetch(series_id: str, years: int = 2) -> pd.Series | None:
-    if not series_id:
-        return None
-    key = os.environ.get("FRED_API_KEY")
-    if not key:
-        return None
+class FredProvider:
+    """Fetches FRED series observations."""
+
+    name = "fred"
+
+    def fetch(self, inst: dict) -> FetchResult:
+        sid = inst.get("fred_series")
+        if not sid:
+            return FetchResult(ErrorCode.NO_SYMBOL, error="fred_no_series")
+        if not has_key():
+            return FetchResult(ErrorCode.NO_KEY, error="fred_no_key")
+        series = _fetch_series(sid)
+        if series is None:
+            return FetchResult(ErrorCode.NO_DATA, error="fred_no_data")
+        return FetchResult(ErrorCode.OK, series, resolved_symbol=sid)
+
+
+def _fetch_series(series_id: str, years: int = 2) -> pd.Series | None:
     end = date.today()
     start = end - timedelta(days=365 * years + 30)
     params = {
         "series_id": series_id,
-        "api_key": key,
+        "api_key": os.environ.get("FRED_API_KEY"),
         "file_type": "json",
         "observation_start": start.isoformat(),
         "observation_end": end.isoformat(),

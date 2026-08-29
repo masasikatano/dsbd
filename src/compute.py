@@ -99,3 +99,37 @@ def spread_series(a: pd.Series, b: pd.Series) -> pd.Series | None:
     if len(both) < 2:
         return None
     return left.loc[both] - right.loc[both]
+
+
+def derive_series(a: pd.Series, b: pd.Series) -> pd.Series | None:
+    """Derive a spread series from two underlying series."""
+    return spread_series(a, b)
+
+
+def derive_from_lasts(item_a: dict, item_b: dict) -> dict | None:
+    """Build a derived item from the last values of two dependencies.
+
+    Returns a metrics-like dict with only ``last`` and ``last_date`` populated,
+    or None when either dependency is missing a last value.
+    """
+    if not item_a or not item_b:
+        return None
+    if item_a.get("status") != "ok" or item_b.get("status") != "ok":
+        return None
+    last_a = item_a.get("last")
+    last_b = item_b.get("last")
+    if last_a is None or last_b is None:
+        return None
+    last = spread(float(last_a), float(last_b))
+    if last is None:
+        return None
+    return {
+        "last": last,
+        "last_date": item_b.get("last_date") or item_a.get("last_date"),
+        "chg_1d_pct": None,
+        "ytd_pct": None,
+        "pos_52w_pct": None,
+        "dev_200d_pct": None,
+        "vol_1y_pct": None,
+        "history": {"t": [], "v": []},
+    }

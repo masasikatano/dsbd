@@ -692,7 +692,7 @@ instruments:
     priority: next
     unit: ETF
     note: "併記: 2801"
-    listed_jp: ["2801"]
+    listed_also: ["2801"]
   - id: ewz
     section: s6
     market: 新興国・個別国

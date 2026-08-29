@@ -1,4 +1,4 @@
-"""Fetch Yahoo data, compute metrics, write docs/data/latest.json."""
+"""Fetch market data, compute metrics, write docs/data/latest.json."""
 
 from __future__ import annotations
 
@@ -10,10 +10,12 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import yaml
 
-from src.compute import history_points, maybe_scale_series, metrics, spread, spread_series
-from src.providers import eodhd, fred, yahoo
+from src.compute import derive_from_lasts, derive_series, history_points, maybe_scale_series, metrics
+from src.providers import build_provider_registry
+from src.providers.base import ErrorCode, FetchResult, Provider
 
 log = logging.getLogger("update")
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,8 +53,6 @@ def ticker_label(inst: dict) -> str:
         parts.append(str(inst["symbol"]))
     for s in inst.get("listed_also") or []:
         parts.append(str(s))
-    for s in inst.get("listed_jp") or []:
-        parts.append(str(s))
     if inst.get("provider") == "fred":
         parts.append(inst.get("fred_series") or "FRED")
     if inst.get("provider") == "eodhd":
@@ -83,7 +83,7 @@ def missing(inst: dict, error: str) -> dict:
     return item
 
 
-def ok_from_series(inst: dict, series) -> dict:
+def ok_from_series(inst: dict, series: pd.Series) -> tuple[dict, pd.Series]:
     series = maybe_scale_series(series, inst.get("scale_if_gt"))
     m = metrics(series)
     item = base_item(inst)
@@ -91,162 +91,157 @@ def ok_from_series(inst: dict, series) -> dict:
     return item, series
 
 
-def fetch_fred(inst: dict):
-    sid = inst.get("fred_series")
-    if not sid:
-        return missing(inst, "fred_no_series"), None
-    if not fred.has_key():
-        return missing(inst, "fred_no_key"), None
-    series = fred.fetch(sid)
-    if series is None:
-        return missing(inst, "fred_no_data"), None
-    item, series = ok_from_series(inst, series)
-    item["resolved_symbol"] = sid
-    item["ticker"] = sid
-    return item, series
+def _apply_fallback(
+    inst: dict,
+    result: FetchResult,
+    registry: dict[str, Provider],
+) -> FetchResult:
+    """Apply provider-specific fallback rules while keeping providers decoupled."""
+    provider_name = inst.get("provider") or "yahoo"
+
+    # Yahoo failure may fall back to FRED when a FRED series is configured.
+    if provider_name == "yahoo" and result.status == ErrorCode.NO_DATA and inst.get("fred_series"):
+        fred_provider = registry.get("fred")
+        if fred_provider is not None:
+            fred_result = fred_provider.fetch(inst)
+            if fred_result.is_ok():
+                return fred_result
+
+    # FRED failure may fall back to Yahoo when a Yahoo symbol is configured.
+    if provider_name == "fred" and not result.is_ok() and inst.get("symbol"):
+        yahoo_provider = registry.get("yahoo")
+        if yahoo_provider is not None:
+            yahoo_result = yahoo_provider.fetch(inst)
+            if yahoo_result.is_ok():
+                return yahoo_result
+
+    return result
 
 
-def fetch_eodhd(inst: dict):
-    sid = inst.get("eodhd_symbol") or inst.get("symbol")
-    if not sid:
-        return missing(inst, "eodhd_no_symbol"), None
-    if not eodhd.has_key():
-        return missing(inst, "eodhd_no_key"), None
-    series = eodhd.fetch(sid, years=1)
-    if series is None:
-        return missing(inst, "eodhd_no_data"), None
-    item, series = ok_from_series(inst, series)
-    item["resolved_symbol"] = sid
-    item["ticker"] = sid
-    return item, series
+def fetch_instrument(
+    inst: dict,
+    registry: dict[str, Provider],
+) -> tuple[dict, pd.Series | None]:
+    provider_name = inst.get("provider") or "yahoo"
+
+    provider = registry.get(provider_name)
+    if provider is None:
+        return missing(inst, f"unknown_provider:{provider_name}"), None
+
+    result = _apply_fallback(inst, provider.fetch(inst), registry)
+
+    if result.is_ok():
+        item, series = ok_from_series(inst, result.series)
+        item["resolved_symbol"] = result.resolved_symbol
+        if result.resolved_symbol != inst.get("symbol") or provider_name == "fred":
+            item["ticker"] = result.resolved_symbol + (
+                f" ({item['ticker']})" if item.get("ticker") else ""
+            )
+        return item, series
+
+    return missing(inst, result.error or result.status), None
 
 
-def fetch_yahoo(inst: dict, cache: dict, allow_fred: bool = True):
-    symbols = [inst.get("symbol")] + list(inst.get("symbol_fallbacks") or [])
-    used, series = None, None
-    for s in symbols:
-        if s and s in cache:
-            used, series = s, cache[s]
-            break
-    if series is None:
-        used, series = yahoo.fetch_first([s for s in symbols if s])
-        if used and series is not None:
-            cache[used] = series
-    if series is None:
-        if allow_fred and inst.get("fred_series"):
-            return fetch_fred(inst)
-        return missing(inst, "yahoo_no_data"), None
-    item, series = ok_from_series(inst, series)
-    if used:
-        item["resolved_symbol"] = used
-        if used != inst.get("symbol") or inst.get("provider") == "fred":
-            item["ticker"] = used + (f" ({item['ticker']})" if item.get("ticker") else "")
-    return item, series
-
-
-def run() -> dict:
-    load_dotenv()
-    cfg = load_config()
-    instruments = cfg["instruments"]
-    by_id: dict[str, dict] = {}
-    items: list[dict] = []
-
-    yahoo_syms: list[str] = []
+def _warm_yahoo_cache(instruments: list[dict], registry: dict[str, Provider]) -> None:
+    yahoo_provider = registry.get("yahoo")
+    if yahoo_provider is None:
+        return
+    symbols: list[str] = []
     for inst in instruments:
         provider = inst.get("provider") or "yahoo"
         if provider == "yahoo" or (provider == "fred" and inst.get("symbol")):
-            yahoo_syms.append(inst.get("symbol"))
-            yahoo_syms.extend(inst.get("symbol_fallbacks") or [])
-    cache = yahoo.fetch_many([s for s in yahoo_syms if s])
-    series_store: dict = {}
+            sym = inst.get("symbol")
+            if sym:
+                symbols.append(sym)
+            symbols.extend(inst.get("symbol_fallbacks") or [])
+    yahoo_provider.warm_cache([s for s in symbols if s])
 
-    for inst in instruments:
-        provider = inst.get("provider") or "yahoo"
-        series = None
-        try:
-            if provider == "fred":
-                item, series = fetch_fred(inst)
-                if series is None and inst.get("symbol"):
-                    yitem, yseries = fetch_yahoo(inst, cache, allow_fred=False)
-                    if yseries is not None:
-                        item, series = yitem, yseries
-            elif provider == "listed_jp":
-                item = missing(inst, "listed_jp_no_price")
-                item["note"] = inst.get("note") or "日本上場はティッカー併記のみ"
-            elif provider == "derived":
-                continue
-            elif provider == "eodhd":
-                item, series = fetch_eodhd(inst)
-            elif provider == "yahoo":
-                item, series = fetch_yahoo(inst, cache)
-            else:
-                item = missing(inst, f"unknown_provider:{provider}")
-        except Exception as e:
-            log.exception("failed %s", inst.get("id"))
-            item = missing(inst, str(e)[:200])
-        if series is not None:
-            series_store[inst["id"]] = series
-        by_id[inst["id"]] = item
-        items.append(item)
 
+def compute_derived(
+    instruments: list[dict],
+    items_by_id: dict[str, dict],
+    series_store: dict[str, pd.Series],
+) -> list[dict]:
+    """Compute derived instruments in config order."""
+    derived_items: list[tuple[dict, dict]] = []
     for inst in instruments:
         if inst.get("provider") != "derived":
             continue
-        deps = (inst.get("derived") or {}).get("minus") or []
-        sa = series_store.get(deps[0]) if len(deps) == 2 else None
-        sb = series_store.get(deps[1]) if len(deps) == 2 else None
+        dep_ids = (inst.get("derived") or {}).get("minus") or []
+        sa = series_store.get(dep_ids[0]) if len(dep_ids) == 2 else None
+        sb = series_store.get(dep_ids[1]) if len(dep_ids) == 2 else None
+
         if sa is not None and sb is not None:
-            ss = spread_series(sa, sb)
+            ss = derive_series(sa, sb)
             if ss is not None:
-                item, series = ok_from_series(inst, ss)
-                series_store[inst["id"]] = series
-                by_id[inst["id"]] = item
-                items.append(item)
+                item, _ = ok_from_series(inst, ss)
+                series_store[inst["id"]] = ss
+                derived_items.append((inst, item))
                 continue
-        vals = []
-        ok = True
-        last_date = None
-        for dep in deps:
-            row = by_id.get(dep)
-            if not row or row.get("status") != "ok" or row.get("last") is None:
-                ok = False
-                break
-            vals.append(float(row["last"]))
-            last_date = row.get("last_date")
-        if not ok or len(vals) != 2:
-            item = missing(inst, "derived_missing_deps")
+
+        dep_items = [items_by_id.get(d) for d in dep_ids]
+        derived = derive_from_lasts(dep_items[0], dep_items[1]) if len(dep_items) == 2 else None
+        if derived is None:
+            derived_items.append((inst, missing(inst, ErrorCode.DERIVED_MISSING_DEPS)))
         else:
             item = base_item(inst)
-            last = spread(vals[0], vals[1])
-            item.update(
-                {
-                    "status": "ok",
-                    "last": last,
-                    "last_date": last_date,
-                    "chg_1d_pct": None,
-                    "ytd_pct": None,
-                    "pos_52w_pct": None,
-                    "dev_200d_pct": None,
-                    "vol_1y_pct": None,
-                    "history": {"t": [], "v": []},
-                }
-            )
-        by_id[inst["id"]] = item
-        items.append(item)
+            item.update({"status": "ok", **derived})
+            derived_items.append((inst, item))
 
+    return [item for _, item in derived_items]
+
+
+def build_payload(cfg: dict, items: list[dict]) -> dict:
     generated_at = datetime.now(JST).isoformat(timespec="seconds")
     ok_n = sum(1 for i in items if i.get("status") == "ok")
     missing_n = sum(1 for i in items if i.get("status") != "ok")
-    payload = {
+
+    # Preserve backwards compatibility: when every item uses Yahoo, source stays "yahoo".
+    sources = {i.get("provider", "yahoo") for i in items}
+    sources.discard("derived")
+    source = "yahoo" if len(sources) == 1 and "yahoo" in sources else "mixed"
+
+    return {
         "generated_at": generated_at,
-        "source": "yahoo",
+        "source": source,
         "timezone": "Asia/Tokyo",
         "sections": cfg.get("sections") or [],
         "ok_count": ok_n,
         "missing_count": missing_n,
         "items": items,
     }
-    return payload
+
+
+def run() -> dict:
+    load_dotenv()
+    cfg = load_config()
+    instruments = cfg["instruments"]
+    registry = build_provider_registry()
+
+    _warm_yahoo_cache(instruments, registry)
+
+    items: list[dict] = []
+    items_by_id: dict[str, dict] = {}
+    series_store: dict[str, pd.Series] = {}
+
+    for inst in instruments:
+        if inst.get("provider") == "derived":
+            continue
+        try:
+            item, series = fetch_instrument(inst, registry)
+        except Exception as e:
+            log.exception("failed %s", inst.get("id"))
+            item = missing(inst, str(e)[:200])
+            series = None
+        if series is not None:
+            series_store[inst["id"]] = series
+        items_by_id[inst["id"]] = item
+        items.append(item)
+
+    derived_items = compute_derived(instruments, items_by_id, series_store)
+    items.extend(derived_items)
+
+    return build_payload(cfg, items)
 
 
 def main() -> int:

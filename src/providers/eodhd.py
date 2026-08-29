@@ -1,4 +1,4 @@
-"""EODHD end-of-day closes. Returns None when the key is missing or a symbol fails."""
+"""EODHD end-of-day closes provider."""
 
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from src.providers.base import ErrorCode, FetchResult
+
 log = logging.getLogger(__name__)
 
 EOD_URL = "https://eodhd.com/api/eod/"
@@ -22,9 +24,24 @@ def has_key() -> bool:
     return bool(os.environ.get("EODHD_API_KEY"))
 
 
-def fetch(symbol: str, years: int = 1) -> pd.Series | None:
-    if not symbol:
-        return None
+class EodhdProvider:
+    """Fetches end-of-day closes from EODHD."""
+
+    name = "eodhd"
+
+    def fetch(self, inst: dict) -> FetchResult:
+        sid = inst.get("eodhd_symbol") or inst.get("symbol")
+        if not sid:
+            return FetchResult(ErrorCode.NO_SYMBOL, error="eodhd_no_symbol")
+        if not has_key():
+            return FetchResult(ErrorCode.NO_KEY, error="eodhd_no_key")
+        series = _fetch_series(sid)
+        if series is None:
+            return FetchResult(ErrorCode.NO_DATA, error="eodhd_no_data")
+        return FetchResult(ErrorCode.OK, series, resolved_symbol=sid)
+
+
+def _fetch_series(symbol: str, years: int = 1) -> pd.Series | None:
     key = os.environ.get("EODHD_API_KEY")
     if not key:
         return None
