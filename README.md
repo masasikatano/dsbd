@@ -57,7 +57,9 @@ src/
   providers/             # Yahoo, FRED, EODHD の共通 Provider 実装
     base.py              # Provider プロトコル / FetchResult
 docs/
-  index.html             # 単一 HTML UI
+  index.html             # ダッシュボード UI（メインページ）
+  detail.html            # 指標詳細ページ（グラフクリックで遷移）
+  common.js              # UI 共通ユーティリティ（index/detail 共有）
   data/latest.json       # 生成済みスナップショット（git 管理）
 tests/                   # pytest 単体テスト
 ```
@@ -75,7 +77,7 @@ tests/                   # pytest 単体テスト
 - `config/instruments.yaml` は単一の真実源として扱う。
 - `src/providers/base.py` の `Provider` / `FetchResult` / `ErrorCode` を参照し、各プロバイダが共通インタフェースに従っているか確認する。
 - 新しいデータソースを追加したい場合は、まず `src/providers/base.py` の拡張を検討し、Kimi Code に提案する。
-- UI (`docs/index.html`) はビルドツールなしの単一ファイル。CSS/JS を追加する場合も Kimi Code が対応する。
+- UI (`docs/index.html`, `docs/detail.html`, `docs/common.js`) はビルドツールなし。CSS/JS を追加する場合も Kimi Code が対応する。
 
 ### 検証コマンド
 
