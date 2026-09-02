@@ -33,9 +33,27 @@ def test_common_js_exists_and_exports_expected_functions():
     assert "encodeURIComponent" in text
 
 
+def test_detail_html_handles_monthly_items():
+    detail = ROOT / "docs" / "detail.html"
+    text = _read(detail)
+    assert "item.monthly" in text
+    assert "mom_pct" in text
+    assert "yoy_pct" in text
+
+
 def test_index_html_loads_common_js_and_has_clickable_sparks():
     index = ROOT / "docs" / "index.html"
     text = _read(index)
     assert 'src="common.js"' in text
     assert "bindClick" in text
     assert "cursor: pointer" in text
+
+
+def test_index_html_has_macro_section():
+    index = ROOT / "docs" / "index.html"
+    text = _read(index)
+    assert "macroCard" in text
+    assert "macroTable" in text
+    assert "mom_pct" in text
+    assert "yoy_pct" in text
+    assert "s7" in text

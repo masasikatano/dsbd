@@ -178,3 +178,34 @@ def test_build_payload_yahoo_only_source():
     ]
     payload = build_payload(cfg, items)
     assert payload["source"] == "yahoo"
+
+
+def _monthly_series(values: list[float], start: str = "2025-01-01") -> pd.Series:
+    dates = pd.date_range(start=start, periods=len(values), freq="MS")
+    return pd.Series(values, index=dates, dtype=float)
+
+
+def test_base_item_monthly_flag():
+    inst = {"id": "us_cpi_yoy", "monthly": True}
+    item = base_item(inst)
+    assert item["monthly"] is True
+
+
+def test_ok_from_series_monthly():
+    inst = {"id": "us_cpi_yoy", "name": "CPI", "monthly": True}
+    s = _monthly_series([100.0, 101.0, 102.0], start="2026-01-01")
+    item, returned = ok_from_series(inst, s)
+    assert item["status"] == "ok"
+    assert item["last"] == 102.0
+    assert item["mom_pct"] is not None
+    assert "chg_1d_pct" not in item
+    assert "ytd_pct" not in item
+
+
+def test_ok_from_series_daily():
+    inst = {"id": "sp500", "name": "S&P 500"}
+    s = _series([100.0, 102.0])
+    item, returned = ok_from_series(inst, s)
+    assert item["status"] == "ok"
+    assert "chg_1d_pct" in item
+    assert "mom_pct" not in item

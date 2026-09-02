@@ -149,22 +149,33 @@
       subtitle.innerHTML = `${badge}${item.market || ""} · ${item.ticker || ""} · ${item.unit || ""} · 最終日付 ${item.last_date || "—"} · status ${statusText}`;
 
       const miss = item.status !== "ok";
-      const chg = signed(item.chg_1d_pct);
-      const ytd = signed(item.ytd_pct);
-      const pos = signed(item.pos_52w_pct);
-      const d200 = signed(item.dev_200d_pct);
-      const vol = signed(item.vol_1y_pct);
       const lastCls = lastClass(item);
-
       const lastValue = miss ? "—" : fmt(item.last);
-      const metricsHtml = `
-        ${metricCard("最終値", lastValue, lastCls)}
-        ${metricCard("前日比％", chg.t, chg.c)}
-        ${metricCard("年初来％", ytd.t, ytd.c)}
-        ${metricCard("52週位置％", pos.t, pos.c)}
-        ${metricCard("200日乖離％", d200.t, d200.c)}
-        ${metricCard("1年ボラ％", vol.t, vol.c)}
-      `;
+
+      let metricsHtml;
+      if (item.monthly) {
+        const mom = signed(item.mom_pct);
+        const yoy = signed(item.yoy_pct);
+        metricsHtml = `
+          ${metricCard("最新値", lastValue, lastCls)}
+          ${metricCard("前月比％", mom.t, mom.c)}
+          ${metricCard("前年比％", yoy.t, yoy.c)}
+        `;
+      } else {
+        const chg = signed(item.chg_1d_pct);
+        const ytd = signed(item.ytd_pct);
+        const pos = signed(item.pos_52w_pct);
+        const d200 = signed(item.dev_200d_pct);
+        const vol = signed(item.vol_1y_pct);
+        metricsHtml = `
+          ${metricCard("最終値", lastValue, lastCls)}
+          ${metricCard("前日比％", chg.t, chg.c)}
+          ${metricCard("年初来％", ytd.t, ytd.c)}
+          ${metricCard("52週位置％", pos.t, pos.c)}
+          ${metricCard("200日乖離％", d200.t, d200.c)}
+          ${metricCard("1年ボラ％", vol.t, vol.c)}
+        `;
+      }
 
       const noteHtml = item.note
         ? `<div class="card"><h2>備考</h2><div class="note">${item.note}</div></div>`

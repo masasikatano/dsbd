@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="./favicon.ico" type="image/x-icon">
   <title>マクロ・ETF投資判断ダッシュボード</title>
   <style>
     :root {
@@ -173,6 +174,50 @@
         <tbody>${items.map(row).join("")}</tbody>
       </table></div>`;
     }
+    function macroCard(item) {
+      const miss = item.status !== "ok" || !(item.history && item.history.v && item.history.v.length > 1);
+      const mom = signed(item.mom_pct);
+      const yoy = signed(item.yoy_pct);
+      return `<article class="card">
+        <h3><span>${item.name}</span><span class="num ${yoy.c}">${yoy.t} YoY</span></h3>
+        <div class="sub">${item.market || ""} · ${item.ticker || ""} · ${item.last_date || "—"} · ${miss ? "データなし" : fmt(item.last)}</div>
+        <canvas class="spark" data-id="${item.id}" data-large="0"></canvas>
+      </article>`;
+    }
+    function macroRow(item) {
+      const miss = item.status !== "ok";
+      const mom = signed(item.mom_pct);
+      const yoy = signed(item.yoy_pct);
+      const pri = item.priority || "next";
+      const lastCell = miss
+        ? `<td class="miss">データなし</td>`
+        : `<td class="num ${lastClass(item)}">${fmt(item.last)}</td>`;
+      const vals = miss
+        ? `<td class="miss">—</td><td class="miss">—</td>`
+        : `<td class="num ${mom.c}">${mom.t}</td>
+           <td class="num ${yoy.c}">${yoy.t}</td>`;
+      return `<tr>
+        <td><span class="badge ${pri}">${PRI[pri] || pri}</span>${item.market || ""}</td>
+        <td>${item.name || item.id}</td>
+        <td><canvas class="mini spark" data-id="${item.id}"></canvas></td>
+        <td class="note">${item.note || ""}</td>
+        <td>${item.ticker || ""}</td>
+        ${lastCell}
+        ${vals}
+        <td>${item.last_date || "—"}</td>
+        <td class="${miss ? "miss" : "ok"}">${miss ? "missing" : "ok"}</td>
+      </tr>`;
+    }
+    function macroTable(items) {
+      return `<div class="wrap"><table>
+        <thead><tr>
+          <th>市場 / 優先度</th><th>指標</th><th>推移</th><th>備考</th><th>ティッカー</th>
+          <th class="num">最新値</th><th class="num">前月比％</th><th class="num">前年比％</th>
+          <th>発表日</th><th>status</th>
+        </tr></thead>
+        <tbody>${items.map(macroRow).join("")}</tbody>
+      </table></div>`;
+    }
     function renderSpark(canvas, item) {
       const isMini = canvas.classList.contains("mini");
       drawLine(canvas, item, isMini ? { l: 1, r: 1, t: 3, b: 3 } : { l: 6, r: 8, t: 8, b: 10 });
@@ -207,10 +252,11 @@
       mainEl.innerHTML = mustHtml + sections.map(s => {
         const rows = bySec[s.id] || [];
         if (!rows.length) return "";
+        const isMacro = s.id === "s7";
         return `<section>
           <h2>${s.title}</h2>
-          <div class="charts">${rows.map(i => chartCard(i, false)).join("")}</div>
-          ${table(rows)}
+          <div class="charts">${rows.map(i => isMacro ? macroCard(i) : chartCard(i, false)).join("")}</div>
+          ${isMacro ? macroTable(rows) : table(rows)}
         </section>`;
       }).join("");
       document.querySelectorAll("canvas.spark").forEach(cv => {

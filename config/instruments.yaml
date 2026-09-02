@@ -17,6 +17,8 @@ sections:
     title: "5 センチメント"
   - id: s6
     title: "6 主要ETF"
+  - id: s7
+    title: "7 マクロ指標（月次）"
 
 instruments:
   # 8.1 先進国株
@@ -774,3 +776,35 @@ instruments:
     symbol: LQD
     priority: next
     unit: ETF
+
+  # 8.10 マクロ指標（月次）
+  - id: us_cpi_yoy
+    section: s7
+    market: 米国
+    name: CPI 前年比
+    provider: fred
+    fred_series: CPIAUCSL
+    priority: next
+    unit: 前年比%
+    monthly: true
+    note: FRED CPIAUCSL。月次・季調済
+  - id: us_core_cpi_yoy
+    section: s7
+    market: 米国
+    name: コアCPI 前年比
+    provider: fred
+    fred_series: CPILFESL
+    priority: next
+    unit: 前年比%
+    monthly: true
+    note: 食品・エネルギー除く。月次・季調済
+  - id: jp_cpi_yoy
+    section: s7
+    market: 日本
+    name: CPI 前年比
+    provider: fred
+    fred_series: JPNCPIALLMINMEI
+    priority: advanced
+    unit: 前年比%
+    monthly: true
+    note: OECD経由の日本CPI

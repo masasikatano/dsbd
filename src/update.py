@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yaml
 
-from src.compute import derive_from_lasts, derive_series, history_points, maybe_scale_series, metrics
+from src.compute import derive_from_lasts, derive_series, history_points, maybe_scale_series, metrics, monthly_metrics
 from src.providers import build_provider_registry
 from src.providers.base import ErrorCode, FetchResult, Provider
 
@@ -74,6 +74,7 @@ def base_item(inst: dict) -> dict:
         "unit": inst.get("unit") or "",
         "provider": inst.get("provider") or "yahoo",
         "thresholds": inst.get("thresholds") or {},
+        "monthly": bool(inst.get("monthly")),
     }
 
 
@@ -85,7 +86,7 @@ def missing(inst: dict, error: str) -> dict:
 
 def ok_from_series(inst: dict, series: pd.Series) -> tuple[dict, pd.Series]:
     series = maybe_scale_series(series, inst.get("scale_if_gt"))
-    m = metrics(series)
+    m = monthly_metrics(series) if inst.get("monthly") else metrics(series)
     item = base_item(inst)
     item.update({"status": "ok", **m, "history": history_points(series)})
     return item, series
@@ -134,9 +135,11 @@ def fetch_instrument(
         item, series = ok_from_series(inst, result.series)
         item["resolved_symbol"] = result.resolved_symbol
         if result.resolved_symbol != inst.get("symbol") or provider_name == "fred":
-            item["ticker"] = result.resolved_symbol + (
-                f" ({item['ticker']})" if item.get("ticker") else ""
-            )
+            existing = item.get("ticker") or ""
+            if existing and existing != result.resolved_symbol and not existing.startswith(result.resolved_symbol + ",") and not existing.startswith(result.resolved_symbol + " ("):
+                item["ticker"] = f"{result.resolved_symbol} ({existing})"
+            elif not existing:
+                item["ticker"] = result.resolved_symbol
         return item, series
 
     return missing(inst, result.error or result.status), None

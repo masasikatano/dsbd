@@ -13,6 +13,7 @@ from src.compute import (
     history_points,
     maybe_scale_series,
     metrics,
+    monthly_metrics,
     scale_yield,
     spread,
     spread_series,
@@ -159,3 +160,35 @@ def test_maybe_scale_series_no_scale():
     s = _series([15.0, 16.0], start="2026-01-02")
     scaled = maybe_scale_series(s, 20.0)
     assert float(scaled.iloc[-1]) == 16.0
+
+
+def _monthly_series(values: list[float], start: str = "2025-01-01") -> pd.Series:
+    dates = pd.date_range(start=start, periods=len(values), freq="MS")
+    return pd.Series(values, index=dates, dtype=float)
+
+
+def test_monthly_metrics_empty():
+    s = pd.Series([], dtype=float)
+    assert monthly_metrics(s) == {
+        "last": None,
+        "last_date": None,
+        "mom_pct": None,
+        "yoy_pct": None,
+    }
+
+
+def test_monthly_metrics_basic():
+    s = _monthly_series([100.0, 101.0, 102.0], start="2026-01-01")
+    m = monthly_metrics(s)
+    assert m["last"] == 102.0
+    assert m["last_date"] == "2026-03-01"
+    assert pytest.approx(m["mom_pct"]) == (102.0 / 101.0 - 1.0) * 100.0
+    assert m["yoy_pct"] is None
+
+
+def test_monthly_metrics_yoy():
+    values = [100.0] + [100.0 * (1.002 ** i) for i in range(1, 14)]
+    s = _monthly_series(values, start="2025-01-01")
+    m = monthly_metrics(s)
+    assert m["last"] == pytest.approx(values[-1])
+    assert pytest.approx(m["yoy_pct"]) == (values[-1] / values[-13] - 1.0) * 100.0

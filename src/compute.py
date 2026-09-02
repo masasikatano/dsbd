@@ -71,6 +71,36 @@ def metrics(series: pd.Series) -> dict:
     return out
 
 
+def monthly_metrics(series: pd.Series) -> dict:
+    """Metrics for monthly economic series such as CPI.
+
+    Returns latest value, observation date, month-over-month change and
+    year-over-year change. Daily-style metrics are omitted.
+    """
+    s = series.dropna().astype(float)
+    out = {
+        "last": None,
+        "last_date": None,
+        "mom_pct": None,
+        "yoy_pct": None,
+    }
+    if s.empty:
+        return out
+    pn = float(s.iloc[-1])
+    last_ts = s.index[-1]
+    out["last"] = pn
+    out["last_date"] = pd.Timestamp(last_ts).strftime("%Y-%m-%d")
+
+    if len(s) >= 2 and float(s.iloc[-2]) != 0:
+        out["mom_pct"] = (pn / float(s.iloc[-2]) - 1.0) * 100.0
+
+    # Year-over-year: compare with the value 12 months earlier.
+    if len(s) >= 13 and float(s.iloc[-13]) != 0:
+        out["yoy_pct"] = (pn / float(s.iloc[-13]) - 1.0) * 100.0
+
+    return out
+
+
 def spread(a: float | None, b: float | None) -> float | None:
     if a is None or b is None:
         return None
