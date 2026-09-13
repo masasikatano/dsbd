@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -57,6 +57,8 @@ def ticker_label(inst: dict) -> str:
         parts.append(inst.get("fred_series") or "FRED")
     if inst.get("provider") == "eodhd":
         parts.append(inst.get("eodhd_symbol") or inst.get("symbol") or "EODHD")
+    if inst.get("provider") == "official":
+        parts.append(inst.get("official_id") or inst.get("official_series") or "official")
     if inst.get("provider") == "derived":
         parts.append("derived")
     return ", ".join(parts)
@@ -92,6 +94,15 @@ def ok_from_series(inst: dict, series: pd.Series) -> tuple[dict, pd.Series]:
     return item, series
 
 
+def _is_stale(series: pd.Series | None, max_age_days: int, today: pd.Timestamp) -> bool:
+    if series is None or series.empty:
+        return True
+    try:
+        return (today - series.index.max()).days > max_age_days
+    except TypeError:
+        return False
+
+
 def _apply_fallback(
     inst: dict,
     result: FetchResult,
@@ -100,13 +111,21 @@ def _apply_fallback(
     """Apply provider-specific fallback rules while keeping providers decoupled."""
     provider_name = inst.get("provider") or "yahoo"
 
-    # Yahoo failure may fall back to FRED when a FRED series is configured.
-    if provider_name == "yahoo" and result.status == ErrorCode.NO_DATA and inst.get("fred_series"):
-        fred_provider = registry.get("fred")
-        if fred_provider is not None:
-            fred_result = fred_provider.fetch(inst)
-            if fred_result.is_ok():
-                return fred_result
+    # Primary failure or stale data may fall back to FRED when a FRED series is configured.
+    if provider_name in {"yahoo", "official"} and inst.get("fred_series"):
+        stale_days = inst.get("stale_after_days")
+        stale = result.is_ok() and stale_days is not None and _is_stale(
+            result.series, int(stale_days), pd.Timestamp(date.today())
+        )
+        if result.status == ErrorCode.NO_DATA or stale:
+            fred_provider = registry.get("fred")
+            if fred_provider is not None:
+                fred_result = fred_provider.fetch(inst)
+                if fred_result.is_ok() and (
+                    result.series is None
+                    or fred_result.series.index.max() > result.series.index.max()
+                ):
+                    return fred_result
 
     # FRED failure may fall back to Yahoo when a Yahoo symbol is configured.
     if provider_name == "fred" and not result.is_ok() and inst.get("symbol"):

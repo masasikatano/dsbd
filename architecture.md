@@ -28,6 +28,7 @@ src/
     yahoo.py              # Yahoo Finance provider with batch cache
     fred.py               # FRED observations provider
     eodhd.py              # EODHD end-of-day provider
+    official.py           # MoF / Bundesbank / BoE official CSVs
 docs/
   index.html              # UI (single file, no build step)
   data/latest.json        # Generated snapshot
@@ -37,12 +38,12 @@ tests/                    # pytest suite
 ## Data Flow
 
 1. `src.update.run()` loads `config/instruments.yaml`.
-2. It builds a provider registry (`YahooProvider`, `FredProvider`, `EodhdProvider`).
+2. It builds a provider registry (`YahooProvider`, `FredProvider`, `EodhdProvider`, `OfficialProvider`).
 3. It warms the Yahoo cache by batch-downloading all symbols that may be fetched through Yahoo.
 4. For each non-derived instrument:
    - Resolve the provider by `provider` field (`yahoo` is default).
    - Call `provider.fetch(inst)` → `FetchResult`.
-   - Apply provider-specific fallbacks (Yahoo → FRED, FRED → Yahoo) in the orchestrator, keeping providers decoupled.
+   - Apply provider-specific fallbacks (Yahoo/official → FRED, FRED → Yahoo) in the orchestrator, keeping providers decoupled.
    - Build an `ok` item with metrics + history, or a `missing` item with an error code.
 5. For each derived instrument (`provider: derived`):
    - Try to compute a spread series from stored dependency series.
@@ -72,6 +73,7 @@ def build_provider_registry() -> dict[str, Provider]:
         YahooProvider.name: YahooProvider(),
         FredProvider.name: FredProvider(),
         EodhdProvider.name: EodhdProvider(),
+        OfficialProvider.name: OfficialProvider(),
     }
 ```
 

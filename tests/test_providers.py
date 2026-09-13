@@ -17,7 +17,7 @@ from src.providers.yahoo import YahooProvider, _closes
 
 def test_registry_contains_all_providers():
     registry = build_provider_registry()
-    assert set(registry) == {"yahoo", "fred", "eodhd"}
+    assert set(registry) == {"yahoo", "fred", "eodhd", "official"}
 
 
 def test_yahoo_provider_no_data():

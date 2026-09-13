@@ -43,7 +43,7 @@
 
 - 上記 10 行を、可能な限り `status: ok` にする。
 - 取れない行は **これまでどおり行を残し「データなし」**。表から削除しない。
-- 取得経路は既存の `yahoo` / `fred` / `listed_jp` に収める。新プロバイダは増やさない。
+- 取得経路は `yahoo` / `fred` / `eodhd` / `official` に収める。国別パーサは `official` 1 本にまとめる。
 - 5 指標（前日比・年初来・52週位置・200日乖離・1年ボラ）は既存 `compute.py` を流用する。
 - 失敗方針は v1 と同じ: 銘柄単位で継続、**全件 missing のときだけ** job 失敗。
 
@@ -92,17 +92,17 @@ Hang Seng TECH 指数 `^HSTECH` は yfinance で空になることがある。
 config: `symbol_fallbacks: ["HSTECH.HI", "3032.HK"]`  
 代用 ETF を使ったときは `note` を「指数欠測時は 3032.HK で代用」にする（既存 TOPIX / MSCI EM と同じ型）。
 
-### 3.2 先進国 10 年利回り（Yahoo → FRED）
+### 3.2 先進国 10 年利回り（公式 CSV → FRED）
 
 `*10Y=RR` は Yahoo 側が死んでいる。指数先物や ETF では利回り％にならないので使わない。
 
-| id | Yahoo 一次 | Yahoo 二次 | FRED フォールバック | 単位 |
-|----|------------|------------|---------------------|------|
-| `jp_10y` | `JP10Y=RR` | （なし。壊れやすい別名は増やさない） | `IRLTLT01JPM156N`（OECD 日本 10 年） | 利回り％ |
-| `de_10y` | `DE10Y=RR` | | `IRLTLT01DEM156N` | 利回り％ |
-| `uk_10y` | `GB10Y=RR` | | `IRLTLT01GBM156N` | 利回り％ |
+| id | 公式一次 | ソース | FRED フォールバック | 単位 |
+|----|----------|--------|---------------------|------|
+| `jp_10y` | 財務省 `jgbcm.csv` + `jgbcm_all.csv` | 国債金利情報 10年（日次） | `IRLTLT01JPM156N` | 利回り％ |
+| `de_10y` | Bundesbank SDMX CSV | 残存 10 年利回り（日次） | `IRLTLT01DEM156N` | 利回り％ |
+| `uk_10y` | 英蘭銀行 IADB `IUDMNPY` | 10 年名目パー利回り（日次） | `IRLTLT01GBM156N` | 利回り％ |
 
-実装: 各 instrument に `provider: yahoo` を維持し、`fred_series` を併記する。`update.py` は Yahoo が空なら `fred.fetch(fred_series)` を試す。FRED キー無し・シリーズ欠測なら missing。
+実装: `provider: official`。`update.py` は公式ソースが空、**または `stale_after_days`（日）より最新値が古い**場合に `fred.fetch(fred_series)` を試す。フォールバックは FRED の最終日付が一次ソースより新しいときだけ採用する。FRED キー無し・シリーズ欠測なら missing。
 
 OECD 長期金利は月次のことがある。その場合:
 
@@ -266,7 +266,7 @@ FRED 利用規約: 公開ダッシュボードに観測値を載せる用途。�
 | 決定 | 理由 |
 |------|------|
 | 新プロバイダを増やさない | 運用と Actions を単純に保つ |
-| 金利 3 本は Yahoo 優先、FRED OECD が保険 | 日次が取れれば日次。取れなければ月次でも水準は出る |
+| 金利 3 本は公式 CSV 優先、FRED OECD が保険 | Yahoo `*10Y=RR` は削除済み。公式日次が取れなければ月次でも水準は出る |
 | TIPS / HY-OAS / MOVE は FRED 本番 | Yahoo に正しい系列がない |
 | FRA-OIS は欠測のまま行を残す | 無料で意味が同じ系列がない。誤った TED 代用はしない |
 | 日本 ETF 2 行だけ Yahoo `.T` | 欠測解消に必要最小。他の日本併記は触らない |

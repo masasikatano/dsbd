@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pandas as pd
 import pytest
 
@@ -45,6 +47,11 @@ def test_ticker_label_fred():
 def test_ticker_label_derived():
     inst = {"provider": "derived"}
     assert ticker_label(inst) == "derived"
+
+
+def test_ticker_label_official():
+    inst = {"provider": "official", "official_id": "MoF-JGB-10Y"}
+    assert ticker_label(inst) == "MoF-JGB-10Y"
 
 
 def test_base_item_defaults():
@@ -106,6 +113,98 @@ def test_fetch_instrument_yahoo_to_fred_fallback():
     item, series = fetch_instrument(inst, registry)
     assert item["status"] == "ok"
     assert item["resolved_symbol"] == "DGS10"
+
+
+class RecordingProvider:
+    name = "recording"
+
+    def __init__(self, result: FetchResult) -> None:
+        self._result = result
+        self.calls = 0
+
+    def fetch(self, inst: dict) -> FetchResult:
+        self.calls += 1
+        return self._result
+
+
+def _series_ending(values: list[float], days_ago: int) -> pd.Series:
+    idx = pd.DatetimeIndex([date.today() - timedelta(days=days_ago + len(values) - 1 - i) for i in range(len(values))])
+    return pd.Series(values, index=idx, dtype=float)
+
+
+def test_fetch_instrument_stale_yahoo_falls_back_to_fresher_fred():
+    yahoo_s = _series_ending([1.0, 2.0], days_ago=30)
+    yahoo = RecordingProvider(FetchResult(ErrorCode.OK, yahoo_s, resolved_symbol="JP10Y=RR"))
+    fred_s = _series_ending([2.0, 3.0], days_ago=2)
+    fred = RecordingProvider(FetchResult(ErrorCode.OK, fred_s, resolved_symbol="IRLTLT01JPM156N"))
+    inst = {
+        "id": "jp_10y",
+        "name": "日本10年国債利回り",
+        "symbol": "JP10Y=RR",
+        "provider": "yahoo",
+        "fred_series": "IRLTLT01JPM156N",
+        "stale_after_days": 7,
+    }
+    item, series = fetch_instrument(inst, {"yahoo": yahoo, "fred": fred})
+    assert item["status"] == "ok"
+    assert item["resolved_symbol"] == "IRLTLT01JPM156N"
+    assert fred.calls == 1
+
+
+def test_fetch_instrument_stale_yahoo_keeps_yahoo_when_fred_is_older():
+    yahoo_s = _series_ending([1.0, 2.0], days_ago=30)
+    yahoo = RecordingProvider(FetchResult(ErrorCode.OK, yahoo_s, resolved_symbol="JP10Y=RR"))
+    fred_s = _series_ending([2.0, 3.0], days_ago=90)
+    fred = RecordingProvider(FetchResult(ErrorCode.OK, fred_s, resolved_symbol="IRLTLT01JPM156N"))
+    inst = {
+        "id": "jp_10y",
+        "name": "日本10年国債利回り",
+        "symbol": "JP10Y=RR",
+        "provider": "yahoo",
+        "fred_series": "IRLTLT01JPM156N",
+        "stale_after_days": 7,
+    }
+    item, series = fetch_instrument(inst, {"yahoo": yahoo, "fred": fred})
+    assert item["status"] == "ok"
+    assert item["resolved_symbol"] == "JP10Y=RR"
+    assert fred.calls == 1
+
+
+def test_fetch_instrument_official_falls_back_to_fred_when_empty():
+    official = RecordingProvider(FetchResult(ErrorCode.NO_DATA, error="official_no_data"))
+    fred_s = _series_ending([2.0, 3.0], days_ago=2)
+    fred = RecordingProvider(FetchResult(ErrorCode.OK, fred_s, resolved_symbol="IRLTLT01JPM156N"))
+    inst = {
+        "id": "jp_10y",
+        "name": "日本10年国債利回り",
+        "provider": "official",
+        "official_id": "MoF-JGB-10Y",
+        "fred_series": "IRLTLT01JPM156N",
+        "stale_after_days": 7,
+    }
+    item, series = fetch_instrument(inst, {"official": official, "fred": fred})
+    assert item["status"] == "ok"
+    assert item["resolved_symbol"] == "IRLTLT01JPM156N"
+    assert fred.calls == 1
+
+
+def test_fetch_instrument_fresh_yahoo_skips_fred():
+    yahoo_s = _series_ending([1.0, 2.0], days_ago=1)
+    yahoo = RecordingProvider(FetchResult(ErrorCode.OK, yahoo_s, resolved_symbol="JP10Y=RR"))
+    fred_s = _series_ending([2.0, 3.0], days_ago=90)
+    fred = RecordingProvider(FetchResult(ErrorCode.OK, fred_s, resolved_symbol="IRLTLT01JPM156N"))
+    inst = {
+        "id": "jp_10y",
+        "name": "日本10年国債利回り",
+        "symbol": "JP10Y=RR",
+        "provider": "yahoo",
+        "fred_series": "IRLTLT01JPM156N",
+        "stale_after_days": 7,
+    }
+    item, series = fetch_instrument(inst, {"yahoo": yahoo, "fred": fred})
+    assert item["status"] == "ok"
+    assert item["resolved_symbol"] == "JP10Y=RR"
+    assert fred.calls == 0
 
 
 def test_compute_derived_from_series():
