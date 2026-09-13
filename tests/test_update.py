@@ -284,6 +284,22 @@ def _monthly_series(values: list[float], start: str = "2025-01-01") -> pd.Series
     return pd.Series(values, index=dates, dtype=float)
 
 
+def test_config_includes_unrate_and_ism():
+    from src.update import load_config
+
+    cfg = load_config()
+    by_id = {i["id"]: i for i in cfg["instruments"]}
+    unrate = by_id["us_unrate"]
+    ism = by_id["us_ism_mfg"]
+    assert unrate["monthly"] is True
+    assert unrate["provider"] == "fred"
+    assert unrate["fred_series"] == "UNRATE"
+    assert ism["monthly"] is True
+    assert ism["provider"] == "official"
+    assert ism["official_format"] == "ism_html"
+    assert ism["thresholds"]["below_is_red"] == 50
+
+
 def test_base_item_monthly_flag():
     inst = {"id": "us_cpi_yoy", "monthly": True}
     item = base_item(inst)

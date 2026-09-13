@@ -16,7 +16,7 @@
 - 認証・IP制限・非公開化はしない。
 - 平日1日1回、米国クローズ後の終値ベースで指標を更新する。
 - セクション 1〜6 を日次5指標の表として載せる。
-- セクション 7「マクロ指標（月次）」に CPI を載せる（最新値 / 前月比 / 前年比 / 発表日）。
+- セクション 7「マクロ指標（月次）」に米失業率・ISM製造業 PMI・CPI を載せる（最新値 / 前月比 / 前年比 / 発表日）。
 - 優先度は行バッジ（`must` / `next` / `advanced`）。折りたたみ・タブにしない。
 - 欠測しても行は残し「データなし」と出す。
 
@@ -88,7 +88,7 @@ Pages 用デプロイ Action は使わない。`GITHUB_TOKEN` に `contents: wri
 | `yahoo` | 主戦。`symbol` と任意の `symbol_fallbacks` |
 | `fred` | TIPS 10年、HY-OAS、米 CPI / コア CPI。キー無しは missing |
 | `eodhd` | CSI 300、VN-Index、USD/CNH（Yahoo が日次履歴を返さない） |
-| `official` | 日独英 10 年、日本 CPI |
+| `official` | 日独英 10 年、日本 CPI、ISM製造業 PMI（HTML表） |
 | `derived` | `us_2s10s` / `us_10s30s`。依存先 missing なら自身も missing |
 
 フォールバック（オーケストレータ側。プロバイダは疎結合のまま）:
@@ -161,6 +161,7 @@ CPI は発表日以外は前回値が残る。備考で説明する。
 - **VIX**: \<20 ニュートラル、20–30 黄、≥30 赤。
 - **2s10s**: 負（逆転）なら赤。正はニュートラル。
 - **MOVE / HY-OAS**: `thresholds.wider_is_red` で拡大＝赤。
+- **ISM製造業 PMI**: `thresholds.below_is_red`（50）未満なら赤。
 
 ---
 
@@ -291,6 +292,8 @@ DXY `DX-Y.NYB`（must）、USD/EUR・GBP・AUD、USD/CNH（EODHD `USDCNH.FOREX`�
 
 | id | 名称 | 取得 | priority |
 |----|------|------|----------|
+| us_unrate | 米失業率 | FRED `UNRATE`（季調済） | next |
+| us_ism_mfg | ISM製造業 PMI | 公開時系列HTML（`official` `ism_html`）。FRED `NAPM` は配信停止。50割れは赤 | next |
 | us_cpi_yoy | 米CPI 前年比 | FRED `CPIAUCSL`（季調済） | next |
 | us_core_cpi_yoy | 米コアCPI 前年比 | FRED `CPILFESL` | next |
 | jp_cpi_yoy | 日CPI 前年比 | 総務省 全国総合 2025年基準 CSV。指数から前月比・前年比 | advanced |
@@ -311,7 +314,7 @@ DXY `DX-Y.NYB`（must）、USD/EUR・GBP・AUD、USD/CNH（EODHD `USDCNH.FOREX`�
 
 - `docs/index.html` は JSON があれば表を出す。セクション 7 がある。
 - 必須行（S&P500, NASDAQ100, 日経, TOPIX, 米10年, DXY, USD/JPY, VIX）が、ソースが生きていれば `ok`。
-- FRED キーありなら米CPI・米コアCPI・TIPS・HY-OAS が `ok`。
+- FRED キーありなら米失業率・米CPI・米コアCPI・TIPS・HY-OAS が `ok`。ISM製造業 PMI は公式HTMLが取れれば `ok`。
 - missing 行が表から消えない。FRA-OIS 行は存在しない。
 - 認証画面がない。
 - Actions に平日 cron と `workflow_dispatch` がある。

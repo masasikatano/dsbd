@@ -24,6 +24,7 @@ function lastClass(item) {
   if (th.vix) return vixClass(item.last);
   if (th.invert_red && item.last != null && item.last < 0) return "down";
   if (th.wider_is_red && item.chg_1d_pct != null && item.chg_1d_pct > 0) return "down";
+  if (th.below_is_red != null && item.last != null && item.last < th.below_is_red) return "down";
   return "";
 }
 

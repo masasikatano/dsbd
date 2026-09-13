@@ -11,6 +11,7 @@ from src.providers.official import (
     OfficialProvider,
     _parse_boe_iadb,
     _parse_bundesbank_csv,
+    _parse_ism_html,
     _parse_mof_jgb,
     _parse_stat_cpi,
     parse_jp_era_date,
@@ -62,6 +63,20 @@ def test_parse_boe_iadb():
     assert s is not None
     assert len(s) == 2
     assert float(s.iloc[-1]) == pytest.approx(5.1922)
+
+
+def test_parse_ism_html():
+    html = """
+    <tr><td data-original-value="2026年08月">2026年08月 </td>
+        <td data-original-value="54.6">54.6 </td></tr>
+    <tr><td data-original-value="2026年07月">2026年07月 </td>
+        <td data-original-value="55.6">55.6 </td></tr>
+    """.encode("utf-8")
+    s = _parse_ism_html(html)
+    assert s is not None
+    assert len(s) == 2
+    assert float(s.loc["2026-08-01"]) == pytest.approx(54.6)
+    assert float(s.loc["2026-07-01"]) == pytest.approx(55.6)
 
 
 def test_parse_stat_cpi():

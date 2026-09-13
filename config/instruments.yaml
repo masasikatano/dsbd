@@ -791,6 +791,32 @@ instruments:
     unit: ETF
 
   # 8.10 マクロ指標（月次）
+  - id: us_unrate
+    section: s7
+    market: 米国
+    name: 失業率
+    provider: fred
+    fred_series: UNRATE
+    priority: next
+    unit: "%"
+    monthly: true
+    note: FRED UNRATE。季調済。雇用統計（失業率）
+  - id: us_ism_mfg
+    section: s7
+    market: 米国
+    name: ISM製造業 PMI
+    provider: official
+    official_format: ism_html
+    official_id: ISM-MFG-PMI
+    official_urls:
+      - https://stock-marketdata.com/ism.html
+    stale_after_days: 45
+    priority: next
+    unit: 指数
+    monthly: true
+    note: 50超えが拡大、割れが縮小。FRED NAPMは配信停止のため公開時系列表から取得
+    thresholds:
+      below_is_red: 50
   - id: us_cpi_yoy
     section: s7
     market: 米国

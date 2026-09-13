@@ -31,7 +31,7 @@ GitHub Actions（`.github/workflows/update.yml`）が平日 21:30 UTC と手動 
 
 TIPS 10年・HY-OAS・MOVE・先進国 10 年・**米CPI（月次）**のフォールバックには [FRED](https://fred.stlouisfed.org/) を使います。日本 CPI は総務省統計局の全国総合（2025年基準 CSV）を一次ソースにします。日本・独・英の 10 年利回りは財務省・Bundesbank・英蘭銀行の日次 CSV を一次ソースにし、欠測時だけ FRED OECD へ落とします。CSI 300・VN-Index・USD/CNH は Yahoo が日次履歴を返さないため [EODHD](https://eodhd.com/) から約1年分を取ります。ローカルは `.env` に `FRED_API_KEY` と `EODHD_API_KEY`（git 対象外）。Actions は同名のリポジトリ secret を渡します。未設定でもジョブは成功し、依存行だけ「データなし」になります。キーを JSON やログに出しません。
 
-欠測しても表の行は残し「データなし」と出します。クレジットスプレッドは HY-OAS（FRED）を出します。FRA-OIS は無料ソースに安定シリーズがないため載せていません。CPI などの月次マクロ指標は「7 マクロ指標（月次）」セクションに表示し、前月比・前年比を出します。
+欠測しても表の行は残し「データなし」と出します。クレジットスプレッドは HY-OAS（FRED）を出します。FRA-OIS は無料ソースに安定シリーズがないため載せていません。CPI・米失業率・ISM製造業 PMI などの月次マクロ指標は「7 マクロ指標（月次）」セクションに表示し、前月比・前年比を出します。
 
 ---
 

@@ -30,8 +30,16 @@ BOE_IADB = (
 )
 
 
+ISM_YM_VALUE_RE = re.compile(
+    r'data-original-value="(\d{4})年(\d{2})月"[^>]*>.*?</td>\s*'
+    r'<td[^>]*data-original-value="([0-9]+(?:\.[0-9]+)?)"',
+    re.S,
+)
+
+
 class OfficialProvider:
-    """Fetches official CSVs (MoF / Bundesbank / BoE / Statistics Bureau CPI)."""
+    """Fetches official CSVs (MoF / Bundesbank / BoE / Statistics Bureau CPI)
+    and the ISM manufacturing PMI HTML table used when FRED NAPM is unavailable."""
 
     name = "official"
 
@@ -85,6 +93,8 @@ def _parse(fmt: str, raw: bytes, inst: dict) -> pd.Series | None:
         return _parse_boe_iadb(raw, inst.get("official_series") or inst.get("official_id"))
     if fmt == "stat_cpi":
         return _parse_stat_cpi(raw, inst.get("official_column") or "総合")
+    if fmt == "ism_html":
+        return _parse_ism_html(raw)
     log.warning("unknown official_format %s", fmt)
     return None
 
@@ -204,6 +214,25 @@ def _parse_yyyymm(text: str) -> pd.Timestamp | None:
         return pd.Timestamp(year, month, 1)
     except ValueError:
         return None
+
+
+def _parse_ism_html(raw: bytes) -> pd.Series | None:
+    """Parse ISM manufacturing PMI monthly table (YYYY年MM月 / value cells)."""
+    text = raw.decode("utf-8-sig", errors="replace")
+    dates: list[pd.Timestamp] = []
+    values: list[float] = []
+    for year_s, month_s, val_s in ISM_YM_VALUE_RE.findall(text):
+        year, month = int(year_s), int(month_s)
+        if month < 1 or month > 12:
+            continue
+        try:
+            ts = pd.Timestamp(year, month, 1)
+            val = float(val_s)
+        except ValueError:
+            continue
+        dates.append(ts)
+        values.append(val)
+    return _series(dates, values)
 
 
 def _parse_boe_iadb(raw: bytes, series_code: str | None) -> pd.Series | None:
