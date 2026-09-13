@@ -1,35 +1,10 @@
 # マクロ・ETF投資判断ダッシュボード 仕様
 
-> 目的：ETF購入のタイミング・銘柄選定のため、マクロ環境と各市場の動向を一目で把握する。  
-> 公開：GitHub Pages（閲覧制限なし。想定閲覧者は本人のみ）。  
-> 更新：GitHub Actions で自動。  
-> **本文書は grilling の結果を固定した仕様である。実装はこの spec に従う。**
-
----
-
-## 0. grilling 記録（決定）
-
-質問は1つずつ行い、推奨案付きで確認した。
-
-| # | 質問 | 決定 |
-|---|------|------|
-| 1 | 市場データの取得先 | **Yahoo Finance（`yfinance`）主戦** |
-| 2 | MOVE / FRA-OIS / HY-OAS / TIPS / 鉄鉱石など欠測しやすい指標 | **FRED を後から足せる差し込み口だけ残し、v1 は Yahoo のみ** |
-| 3 | Actions の更新頻度 | **平日・米国市場クローズ後 1日1回**（UTC 21:30 目安） |
-| 4 | Pages への載せ方 | **`main` に JSON + 生成 HTML をコミットして公開** |
-| 5 | フロント実装 | **単一 HTML + CSS + 少量 JS**（ビルドなし） |
-| 6 | セクション8の優先度のUI反映 | **全部常時表示。見出しに優先度ラベルのみ** |
-| 7 | 各指標の表示項目 | **前日比・年初来・52週位置・200日乖離・1年ボラの5つ** |
-| 8 | 色分け | **騰落は緑/赤。閾値付き指標は段階色** |
-| 9 | 「前日比」とタイムゾーン | **各市場の直近営業日終値同士。表示は JST** |
-| 10 | セクション6のETF（米/日上場） | **米上場は数値取得。日本上場はティッカー併記のみ** |
-| 11 | v1 の指標カバレッジ | **リスト全件を Yahoo で試行。失敗行は「データなし」** |
-| 12 | 共通理解のあと何をするか | **`spec.md` だけ先に書く。実装は止める** |
-
-補足（推奨として仕様に含めるが、独立した質問では選ばせていないもの）:
-
-- schedule に加えて `workflow_dispatch` を付ける。
-- 日次履歴 JSON はコミットしない（`latest.json` 上書きのみ）。リポジトリ肥大化防止。
+> 目的：ETF購入のタイミング・銘柄選定のため、マクロ環境と各市場の動向を一目で把握する。
+> 公開：GitHub Pages（閲覧制限なし。想定閲覧者は本人のみ）。
+> 更新：GitHub Actions で自動。
+> **指標の単一の真実は `config/instruments.yaml`。本文書は現行の振る舞いを固定する。**
+> `spec_v2.md`（欠測埋め）と `spec_cpi.md`（月次 CPI）は本ファイルに統合した。
 
 ---
 
@@ -40,19 +15,31 @@
 - 静的サイトとして GitHub Pages でダッシュボードを出す。
 - 認証・IP制限・非公開化はしない。
 - 平日1日1回、米国クローズ後の終値ベースで指標を更新する。
-- 元のダッシュボード草案のセクション 1〜6 を表としてすべて載せる。
-- セクション7の5指標を各行に出す（計算不能なら「—」）。
-- セクション8の優先度はバッジで示す（折りたたみ・タブにしない）。
+- セクション 1〜6 を日次5指標の表として載せる。
+- セクション 7「マクロ指標（月次）」に CPI を載せる（最新値 / 前月比 / 前年比 / 発表日）。
+- 優先度は行バッジ（`must` / `next` / `advanced`）。折りたたみ・タブにしない。
+- 欠測しても行は残し「データなし」と出す。
 
-### 1.2 非目標（v1）
+### 1.2 非目標
 
 - ログイン、GitHub private 必須化、Cloudflare Access 等の閲覧制限
 - 分足・リアルタイム・WebSocket
-- スパークライン・履歴チャート
 - 売買シグナルの自動判定
-- FRED API の本番接続
-- 日本上場 ETF の価格取得
-- 日次スナップショットの git 履歴保管
+- 日次スナップショットの git 履歴保管（`latest.json` 上書きのみ）
+- FRA-OIS（無料ソースに安定シリーズがないため **行自体を載せない**）
+- 日本上場 ETF をセクション6の全行に広げること（価格取得は `etf_nk225` / `etf_topix` のみ）
+- 欧州 CPI・米 PPI（拡張候補。未実装）
+
+### 1.3 過去決定からの変更（統合時）
+
+| 旧（v1 / 計画） | 現行 |
+|-----------------|------|
+| FRED はスタブ | `FRED_API_KEY` があるとき本番呼び出し |
+| スパークライン・詳細チャートなし | 必須カードのスパークラインと `detail.html` |
+| 日本上場 ETF はティッカー併記のみ | `1321.T` / `1308.T` で終値を取る |
+| FRA-OIS は missing のまま行を残す | 行を出さない |
+| MOVE は FRED `MOVEINDEX` | Yahoo `^MOVE` |
+| 日本 CPI は FRED OECD | 総務省統計局 CSV（`official`） |
 
 ---
 
@@ -60,26 +47,33 @@
 
 ```
 GitHub Actions (平日 21:30 UTC + 手動)
-  → Python 3.12 + yfinance + pandas
-  → config の全銘柄を取得・計算
+  → python -m src.update
   → docs/data/latest.json を上書き
   → main へ commit & push（[skip ci]）
 
 GitHub Pages（Settings: Deploy from branch main / /docs）
   → docs/index.html が latest.json を fetch して表を描画
+  → グラフクリックで docs/detail.html
 ```
 
 | パス | 役割 |
 |------|------|
 | `config/instruments.yaml` | 指標定義（id, セクション, 優先度, provider, symbol, ラベル, 備考, 単位, 閾値） |
-| `src/providers/yahoo.py` | Yahoo 取得 |
-| `src/providers/fred.py` | **スタブ**。未設定・未実装ならスキップし、行は missing |
-| `src/compute.py` | 5指標と派生スプレッドの計算 |
-| `docs/index.html` | UI（単一ファイル。CSS/JS は同一ファイルまたは `docs/` 内の静的ファイル） |
+| `src/update.py` | 取得・計算・JSON 出力 |
+| `src/compute.py` | 日次5指標・派生スプレッド・月次前月比/前年比 |
+| `src/providers/yahoo.py` | Yahoo Finance |
+| `src/providers/fred.py` | FRED（キー未設定なら missing） |
+| `src/providers/eodhd.py` | EODHD（Yahoo が日次履歴を返さない銘柄） |
+| `src/providers/official.py` | 財務省・Bundesbank・英蘭銀行・総務省 CPI の CSV |
+| `docs/index.html` | ダッシュボード |
+| `docs/detail.html` | 指標詳細 |
+| `docs/common.js` | UI 共通 |
 | `docs/data/latest.json` | 最新スナップショット |
 | `.github/workflows/update.yml` | 定期更新 |
 
-Pages 用デプロイ Action は使わない。リポジトリ設定で `main` の `/docs` を公開する。README に設定手順を1段落書く（実装時）。
+Pages 用デプロイ Action は使わない。`GITHUB_TOKEN` に `contents: write` が必要。カスタムドメインは使わない。
+
+ローカル: `./run_local.sh`。`.env` に `FRED_API_KEY` / `EODHD_API_KEY`（git 対象外）。キーを JSON やログに出さない。
 
 ---
 
@@ -87,140 +81,113 @@ Pages 用デプロイ Action は使わない。リポジトリ設定で `main` �
 
 ### 3.1 プロバイダ
 
-- v1 の実取得は `yahoo` のみ。
-- 各 instrument に `provider: yahoo | fred | derived` を持つ。
-- `fred` は v1 では呼ばない（または呼んでも即 missing）。後で API キーとシリーズ ID を足せる形にする。
-- `derived` は他行の値から計算する（2s10s, 10s30s）。依存先が missing なら自身も missing。
+各 instrument は `provider: yahoo | fred | eodhd | official | derived`（省略時は `yahoo`）。
+
+| provider | 用途 |
+|----------|------|
+| `yahoo` | 主戦。`symbol` と任意の `symbol_fallbacks` |
+| `fred` | TIPS 10年、HY-OAS、米 CPI / コア CPI。キー無しは missing |
+| `eodhd` | CSI 300、VN-Index、USD/CNH（Yahoo が日次履歴を返さない） |
+| `official` | 日独英 10 年、日本 CPI |
+| `derived` | `us_2s10s` / `us_10s30s`。依存先 missing なら自身も missing |
+
+フォールバック（オーケストレータ側。プロバイダは疎結合のまま）:
+
+- `yahoo` / `official` で空、または `stale_after_days` より最新値が古い、かつ `fred_series` がある → FRED
+- FRED の最終日付が一次ソースより新しいときだけ採用
+- MOVE は Yahoo 一次（FRED `MOVEINDEX` は使わない）
 
 ### 3.2 スケジュール
 
-- cron: `30 21 * * 1-5`（UTC）。米国通常取引終了（16:00 ET）のあと。夏時間でも終了後になる側に寄せる。
-- `workflow_dispatch` あり。
-- コミットメッセージに `[skip ci]` を含め、JSON コミットで workflow が再起動しないようにする。
+- cron: `30 21 * * 1-5`（UTC）
+- `workflow_dispatch` あり
+- コミットメッセージに `[skip ci]`
+- 履歴窓の目安は約2年（EODHD は約1年）
 
 ### 3.3 失敗方針
 
-- ティッカー単位で try/except。ログして継続。
-- 行の `status`: `ok` | `missing`。
-- UI は missing を「データなし」と表示し、行は消さない。
-- **全件 missing のときだけ** job を失敗させる。
-- Yahoo の一時障害で前日 JSON を残すかはそのジョブがコミットしなければ自然に残る（失敗時は push しない）。部分成功は新しい JSON を push する。
-
-### 3.4 履歴期間
-
-計算に必要な日足を取る。目安は **2年分**（200日移動平均と1年ボラ、52週に余裕を持たせる）。期間不足の指標だけ該当セルを「—」にする。
+- ティッカー単位で継続。行の `status`: `ok` | `missing`
+- UI は missing を「データなし」。行は消さない
+- **全件 missing のときだけ** job を失敗させる
+- 部分成功は新しい JSON を push する。キー未設定は該当行 missing でジョブ成功
 
 ---
 
 ## 4. 計算式
 
-終値系列を \(P_t\)（\(t\) は当該市場の営業日）とする。利回り系列も同じ扱い（水準の差と変化率の意味が違う点は UI の単位で区別する）。
+### 4.1 日次指標
+
+終値系列を \(P_t\)（当該市場の営業日）。利回りも同じ扱い。単位列で区別する。
 
 | 項目 | 定義 |
 |------|------|
 | 最終価格 | 系列の最後の有効終値 \(P_n\) |
-| 前日比（%） | \((P_n / P_{n-1} - 1) \times 100\)。利回りは **bp 差**（\((P_n - P_{n-1}) \times 100\)）でもよいが、v1 は他と同じく変化率％で統一する。単位列で「%」または「利回り％」を出す |
+| 前日比（%） | \((P_n / P_{n-1} - 1) \times 100\) |
 | 年初来（%） | 当年最初の営業日終値 \(P_{y0}\) に対し \((P_n / P_{y0} - 1) \times 100\) |
-| 52週位置（%） | \( (P_n - L_{52}) / (H_{52} - L_{52}) \times 100 \)。\(H_{52}, L_{52}\) は直近252営業日の高値・安値。分母0なら「—」 |
-| 200日乖離（%） | \( (P_n / MA_{200} - 1) \times 100 \)。200営業日未満なら「—」 |
-| 1年ボラ | 直近252営業日の日次対数収益の標準偏差 × \(\sqrt{252}\)。パーセント表示（例: 0.18 → 18.0%） |
+| 52週位置（%） | \( (P_n - L_{52}) / (H_{52} - L_{52}) \times 100\)。直近252営業日。分母0なら「—」 |
+| 200日乖離（%） | \( (P_n / MA_{200} - 1) \times 100\)。200営業日未満なら「—」 |
+| 1年ボラ | 直近252営業日の日次対数収益の標準偏差 × \(\sqrt{252}\)。パーセント表示 |
 
 派生:
 
 | id | 計算 |
 |----|------|
-| `us_2s10s` | 米10年利回り − 米2年利回り（パーセントポイント） |
+| `us_2s10s` | 米10年 − 米2年（パーセントポイント） |
 | `us_10s30s` | 米30年 − 米10年 |
 
-表示タイムゾーンは **Asia/Tokyo**。`as_of` と各行の `last_date` は ISO 8601 にタイムゾーンオフセットを付けるか、日付のみ＋ヘッダーで JST と明記する。
+米10年・30年: Yahoo 値が 20 超なら /10 して％に正規化（`scale_if_gt: 20`）。
+
+表示タイムゾーンは **Asia/Tokyo**。`generated_at` は ISO 8601 + オフセット。
+
+### 4.2 月次指標（`monthly: true`）
+
+日次5指標は適用しない。
+
+| 項目 | 定義 |
+|------|------|
+| 最新値 | 直近の月次値 |
+| 前月比（%） | `(latest / previous - 1) × 100` |
+| 前年比（%） | `(latest / value_12m_ago - 1) × 100` |
+| 発表日 | 系列の `date`（リリース日ではなく観測月の日付） |
+
+CPI は発表日以外は前回値が残る。備考で説明する。
 
 ---
 
 ## 5. 色分け
 
-- **騰落（前日比・年初来）**: 正＝緑、負＝赤、0＝ニュートラル。色覚用に符号と数値は残す（色だけに依存しない）。
-- **52週位置**: 色分けしない（数値のみ）。必要なら実装時に任意。
-- **200日乖離**: 騰落と同じ緑/赤。
+- **騰落（前日比・年初来・200日乖離、月次の前月比・前年比）**: 正＝緑、負＝赤、0＝ニュートラル。符号と数値は残す。
+- **52週位置**: 色分けしない。
 - **VIX**: \<20 ニュートラル、20–30 黄、≥30 赤。
-- **2s10s**: 値が負（逆転）なら赤。正はニュートラル。
-- MOVE / クレジットスプレッドは、Yahoo で値が来た場合のみ「拡大＝赤」などの単純ルールを config の `thresholds` で持てるようにする。v1 で欠測なら色なし。
+- **2s10s**: 負（逆転）なら赤。正はニュートラル。
+- **MOVE / HY-OAS**: `thresholds.wider_is_red` で拡大＝赤。
 
 ---
 
 ## 6. UI
 
-- 言語: 日本語。
-- テーマ: ダーク寄りの表。ビルドツールなし。
-- ヘッダー: タイトル、目的文、最終更新（JST）、欠測件数バナー。
-- セクション 1〜6 を草案どおりの見出しで並べる。
-- 各セクション見出しに優先度バッジ: `必須` / `次に見る` / `上級`。
-- 行: 市場または対象、指標名、備考（短文可）、ティッカー、最終値、5指標、最終日付、status。
-- 全部展開。折りたたみ禁止。
-- 狭い画面は表の横スクロールでよい。
-- ETF セクションの日本ティッカーは数値列を「—」または非表示にし、ティッカー文字列を備考側に出す。
-
-優先度マッピング:
-
-**必須**
-
-- 1-1 のうち S&P 500, NASDAQ 100, 日経平均, TOPIX（セクション1-1全体は表示するが、バッジはセクション単位でも行単位でもよい。実装時は **セクション単位** を基本とし、1-1 は必須とする）
-- 2-1 米国10年
-- 4-1 DXY, USD/JPY
-- 5 VIX
-
-**次に見る**
-
-- 1-3 セクター
-- 2-2 2s10s とクレジットスプレッド（取れた場合）
-- 3 原油・金・銅
-- 6 ETFマトリクス全体
-
-**上級**
-
-- 1-2 新興国
-- 2-1 TIPS ほか（米10年以外の金利）
-- 2-2 FRA-OIS, MOVE
-- 3 鉄鉱石・農産物
-- 4-3 新興国通貨
-
-セクション単位だと「必須と上級が混在するセクション」がある。**行に `priority: must | next | advanced` を持たせ、見出しはセクション番号、行のバッジで優先度を出す**ことを仕様とする（grilling の「見出しラベル」を満たしつつ混在に耐える）。
+- 言語: 日本語。ダーク寄りの表。ビルドツールなし。
+- ヘッダー: タイトル、目的文、最終更新（JST）、欠測件数バナー（`欠測 N 件（行は残し「データなし」表示）`）。
+- 必須優先度のカード＋スパークライン。
+- セクション 1〜6 は日次5指標テーブル。セクション 7 は月次列（市場、指標名、最新値、前月比、前年比、発表日、備考）。
+- 行に優先度バッジ。全部展開。狭い画面は横スクロール可。
+- グラフから `detail.html`（日次・月次とも時系列）。
+- missing の `error` は画面に出さない。
 
 ---
 
-## 7. `latest.json` の形
+## 7. `latest.json`
 
-```json
-{
-  "generated_at": "2026-08-27T06:30:00+09:00",
-  "source": "yahoo",
-  "items": [
-    {
-      "id": "sp500",
-      "status": "ok",
-      "last": 5630.12,
-      "last_date": "2026-08-26",
-      "chg_1d_pct": -0.42,
-      "ytd_pct": 12.3,
-      "pos_52w_pct": 81.4,
-      "dev_200d_pct": 3.1,
-      "vol_1y_pct": 16.2
-    },
-    {
-      "id": "move",
-      "status": "missing",
-      "error": "yahoo_no_data"
-    }
-  ]
-}
-```
+ラベル・備考・セクションは生成時に JSON へ埋め込む（Pages が yaml を読めないため）。単一の真実は yaml。
 
-ラベル・備考・セクションは JSON に重複してもよいが、単一の真実は `config/instruments.yaml` とする。フロントは config を持たないため、**生成時にラベル類を JSON へ埋め込む**（Pages が yaml を読めないため）。
+日次行は `chg_1d_pct` / `ytd_pct` / `pos_52w_pct` / `dev_200d_pct` / `vol_1y_pct` と任意の `history`。
+月次行は `mom_pct` / `yoy_pct`。`source` は複数プロバイダのため `mixed`。
 
 ---
 
-## 8. 指標定義（Yahoo シンボル）
+## 8. 指標定義
 
-`provider` 省略時は `yahoo`。シンボルは v1 の初期値。Yahoo 側の変更で欠測したら config だけ直す。
+シンボル変更は yaml のみ直す。`provider` 省略時は `yahoo`。
 
 ### 8.1 先進国株価指数（1-1）
 
@@ -230,7 +197,7 @@ Pages 用デプロイ Action は使わない。リポジトリ設定で `main` �
 | nasdaq100 | 米国 | NASDAQ 100 | `^NDX` | must |
 | russell2000 | 米国 | ラッセル2000 | `^RUT` | next |
 | nikkei225 | 日本 | 日経平均株価 | `^N225` | must |
-| topix | 日本 | TOPIX | `^TOPX` | must |
+| topix | 日本 | TOPIX | `^TOPX`（fallback `1308.T`, `1306.T`） | must |
 | stoxx600 | 欧州 | STOXX Europe 600 | `^STOXX` | next |
 | dax | 欧州 | DAX | `^GDAXI` | next |
 | cac40 | 欧州 | CAC40 | `^FCHI` | next |
@@ -242,50 +209,38 @@ Pages 用デプロイ Action は使わない。リポジトリ設定で `main` �
 
 ### 8.2 新興国株価指数（1-2）すべて advanced
 
-| id | 市場 | 指標 | symbol |
-|----|------|------|--------|
-| msci_em | グローバル | MSCI EM | `EEM`（指数そのものが欠ける場合の代用。可能なら `^MSCIEF` 等を試し、ダメなら EEM） |
+| id | 市場 | 指標 | 取得 |
+|----|------|------|------|
+| msci_em | グローバル | MSCI EM | `^MSCIEF`（fallback `EEM`） |
 | nifty50 | インド | Nifty 50 | `^NSEI` |
 | sse | 中国・本土 | 上海総合 | `000001.SS` |
-| csi300 | 中国・本土 | CSI 300 | `000300.SS` |
+| csi300 | 中国・本土 | CSI 300 | EODHD `000300.SHG` |
 | hsi | 中国・香港 | ハンセン | `^HSI` |
-| hstech | 中国・香港 | ハンセンテック | `^HSTECH` |
+| hstech | 中国・香港 | ハンセンテック | `^HSTECH`（fallback `HSTECH.HI`, `3032.HK`。ETF 代用時は note） |
 | bovespa | ブラジル | Bovespa | `^BVSP` |
 | ipc | メキシコ | IPC | `^MXX` |
-| vnindex | ベトナム | VN-Index | `^VNINDEX.VN` または `VNM` へフォールバック |
+| vnindex | ベトナム | VN-Index | EODHD `VNINDEX.INDX` |
 | jci | インドネシア | JCI | `^JKSE` |
 
-SENSEX は出さない（草案どおり Nifty 主戦）。
+SENSEX は出さない。
 
 ### 8.3 米国セクター（1-3）priority: next
 
-| id | セクター | symbol |
-|----|----------|--------|
-| xlk | 情報技術 | `XLK` |
-| xlf | 金融 | `XLF` |
-| xle | エネルギー | `XLE` |
-| xlv | ヘルスケア | `XLV` |
-| xlp | 生活必需品 | `XLP` |
-| xlu | 公共事業 | `XLU` |
-| xlre | 不動産 | `XLRE` |
-| xlb | 資材 | `XLB` |
-| xli | 工業 | `XLI` |
-| xlc | 通信サービス | `XLC` |
-| xly | 一般消費財 | `XLY` |
+XLK, XLF, XLE, XLV, XLP, XLU, XLRE, XLB, XLI, XLC, XLY。
 
 ### 8.4 先進国金利（2-1）
 
-| id | 内容 | symbol | priority | 備考 |
-|----|------|--------|----------|------|
-| us_2y | 米2年国債利回り | `^IRX` は13週。2年は `^UST2YR` または `2YY=F` を試す。両方欠測なら missing | next | |
-| us_10y | 米10年 | `^TNX` | must | Yahoo はパーセント×10 で来る場合あり。**値が 20 超なら /10 して％に正規化** |
-| us_30y | 米30年 | `^TYX` | advanced | 同様にスケール補正 |
-| us_tips_10y | TIPS 10年 | `^TNX` と TIP では実質金利にならない。Yahoo に安定シンボルがなければ **missing（FRED 後付け: DFII10）** | advanced | |
-| jp_10y | 日本10年 | `^TNX-JP` は不安定。`JP10Y=RR` 等を試し、だめなら missing | advanced | |
-| de_10y | 独10年 Bund | `^TNX` 系ではなく `DE10Y=RR` 等を試す | advanced | |
-| uk_10y | 英10年 Gilts | `GB10Y=RR` 等を試す | advanced | |
+| id | 内容 | 取得 | priority |
+|----|------|------|----------|
+| us_2y | 米2年 | Yahoo `^UST2YR` / `2YY=F` | next |
+| us_10y | 米10年 | Yahoo `^TNX`（scale） | must |
+| us_30y | 米30年 | Yahoo `^TYX`（scale） | advanced |
+| us_tips_10y | TIPS 10年実質 | FRED `DFII10`（Yahoo 代用しない） | advanced |
+| jp_10y | 日本10年 | 財務省 CSV → FRED `IRLTLT01JPM156N` | advanced |
+| de_10y | 独10年 | Bundesbank CSV → FRED `IRLTLT01DEM156N` | advanced |
+| uk_10y | 英10年 | 英蘭銀行 IUDMNPY → FRED `IRLTLT01GBM156N` | advanced |
 
-金利シンボルは Yahoo で壊れやすい。config に `symbol_fallbacks: []` を置き、上から試す。
+OECD フォールバックが月次でも `ok` にしてよい。計算不能な日次セルは「—」。
 
 ### 8.5 イールドカーブ・スプレッド（2-2）
 
@@ -293,169 +248,71 @@ SENSEX は出さない（草案どおり Nifty 主戦）。
 |----|------|----------|----------|
 | us_2s10s | 米10年 − 米2年 | derived | next |
 | us_10s30s | 米30年 − 米10年 | derived | advanced |
-| hy_oas | HY-OAS | fred（v1 missing） | next |
-| fra_ois | FRA-OIS | fred（v1 missing） | advanced |
+| hy_oas | HY-OAS | FRED `BAMLH0A0HYM2`（単位 bp。HYG 代用しない） | next |
 
 ### 8.6 インフレ・商品（3）
 
-| id | カテゴリ | 銘柄 | symbol | priority |
-|----|----------|------|--------|----------|
-| wti | エネルギー | WTI | `CL=F` | next |
-| brent | エネルギー | Brent | `BZ=F` | next |
-| ng | エネルギー | 天然ガス | `NG=F` | advanced |
-| gold | 貴金属 | 金 | `GC=F` | next |
-| silver | 貴金属 | 銀 | `SI=F` | advanced |
-| copper | 工業金属 | 銅 | `HG=F` | next |
-| iron_ore | 工業金属 | 鉄鉱石 | `TIO=F` 等を試す。だめなら missing | advanced |
-| soybean | 農産物 | 大豆 | `ZS=F` | advanced |
-| wheat | 農産物 | 小麦 | `ZW=F` | advanced |
-| corn | 農産物 | トウモロコシ | `ZC=F` | advanced |
+WTI `CL=F`、Brent `BZ=F`、天然ガス `NG=F`、金 `GC=F`、銀 `SI=F`、銅 `HG=F`、鉄鉱石 `TIO=F`、大豆 `ZS=F`、小麦 `ZW=F`、トウモロコシ `ZC=F`。
 
 ### 8.7 為替（4）
 
-| id | ペア | symbol | priority |
-|----|------|--------|----------|
-| dxy | DXY | `DX-Y.NYB` | must |
-| eurusd | USD/EUR | `USDEUR=X` | next |
-| gbpusd | USD/GBP | `USDGBP=X` | next |
-| audusd | USD/AUD | `USDAUD=X` | next |
-| usdcnh | USD/CNH | `CNH=X` | advanced |
-| usdcny | USD/CNY | `CNY=X` | advanced |
-| usdjpy | USD/JPY | `JPY=X` | must |
-| eurjpy | EUR/JPY | `EURJPY=X` | advanced |
-| chfjpy | CHF/JPY | `CHFJPY=X` | advanced |
-| usdinr | USD/INR | `INR=X` | advanced |
-| usdbrl | USD/BRL | `BRL=X` | advanced |
-| usdkrw | USD/KRW | `KRW=X` | advanced |
-| usdtwd | USD/TWD | `TWD=X` | advanced |
+DXY `DX-Y.NYB`（must）、USD/EUR・GBP・AUD、USD/CNH（EODHD `USDCNH.FOREX`）、USD/CNY、USD/JPY（must）、EUR/JPY、CHF/JPY、USD/INR・BRL・KRW・TWD。
 
 ### 8.8 センチメント（5）
 
-| id | 指標 | symbol | priority |
-|----|------|--------|----------|
+| id | 指標 | 取得 | priority |
+|----|------|------|----------|
 | vix | VIX | `^VIX` | must |
-| move | MOVE | Yahoo に安定シンボルなし → missing、FRED 後付け | advanced |
+| move | MOVE | Yahoo `^MOVE` | advanced |
 | btc | BTC | `BTC-USD` | next |
 | eth | ETH | `ETH-USD` | next |
 
 ### 8.9 主要ETF（6）priority: next
 
-米上場は取得する。日本上場は `listed_jp` として文字列のみ（price 取得しない）。
-
-**米国株式**
-
-| 対象 | 取得 symbol | 併記 |
-|------|-------------|------|
-| S&P 500 | `SPY`（VOO, IVV は併記のみ） | VOO, IVV |
-| NASDAQ 100 | `QQQ` | |
-| ラッセル2000 | `IWM` | |
-| ダウ | `DIA` | |
-
-**日本株式**（数値なし）
-
-| 対象 | 併記 |
-|------|------|
-| 日経225 | 1321, 1322 |
-| TOPIX | 1306, 1308 |
-| JPX日経400 | **出さない**（草案の省略推奨に従う） |
-
-**欧州**
-
-| 対象 | symbol |
-|------|--------|
-| STOXX 600 | `VGK` |
-| ユーロ圏 | `EZU` |
-| ドイツ | `EWG` |
-| フランス | `EWQ` |
-| 英国 | `EWU` |
-
-**新興国・個別国**
+米上場は取得。日本は次の2行だけ Yahoo `.T`。その他の日本コードは `listed_also` 併記のみ。JPX日経400は出さない。指数と ETF は別 id で二重表示してよい。
 
 | 対象 | symbol | 併記 |
 |------|--------|------|
-| MSCI EM | `EEM` | VWO |
-| インド | `INDA` | |
-| 中国・本土 | `ASHR` | |
-| 中国・香港 | `FXI` | 2801 |
-| ブラジル | `EWZ` | |
-| ベトナム | `VNM` | |
-| 韓国 | `EWY` | |
-| 台湾 | `EWT` | |
+| S&P 500 | SPY | VOO, IVV |
+| NASDAQ 100 | QQQ | |
+| ラッセル2000 | IWM | |
+| ダウ | DIA | |
+| 日経225 | `1321.T`（fallback `1322.T`） | 1322 |
+| TOPIX | `1308.T`（fallback `1306.T`） | 1306 |
+| STOXX 600 / ユーロ圏 / 独 / 仏 / 英 | VGK, EZU, EWG, EWQ, EWU | |
+| MSCI EM | EEM | VWO |
+| インド / 中国本土 / 香港 / ブラジル / ベトナム / 韓国 / 台湾 | INDA, ASHR, FXI, EWZ, VNM, EWY, EWT | FXI に 2801 |
+| ACWI / EAFE | ACWI, EFA | EFA に VEA |
+| 米国債20年超 / 7-10年 / 1-3年 / HY / IG | TLT, IEF, SHY, HYG, LQD | HYG に JNK |
 
-**グローバル**
+### 8.10 マクロ指標（月次）（7）
 
-| 対象 | symbol | 併記 |
-|------|--------|------|
-| ACWI | `ACWI` | |
-| EAFE | `EFA` | VEA |
-| MSCI EM | 上の EEM と重複してよい（同じ id を再利用し二重取得しない） | |
+日次セクションと分離。
 
-**債券**
+| id | 名称 | 取得 | priority |
+|----|------|------|----------|
+| us_cpi_yoy | 米CPI 前年比 | FRED `CPIAUCSL`（季調済） | next |
+| us_core_cpi_yoy | 米コアCPI 前年比 | FRED `CPILFESL` | next |
+| jp_cpi_yoy | 日CPI 前年比 | 総務省 全国総合 2025年基準 CSV。指数から前月比・前年比 | advanced |
 
-| 対象 | symbol |
-|------|--------|
-| 米国債20年超 | `TLT` |
-| 7-10年 | `IEF` |
-| 1-3年 | `SHY` |
-| HY | `HYG`（JNK 併記） |
-| IG 社債 | `LQD` |
-
-同一価格系列を指数と ETF で二重に出してよい（SPY と ^GSPC は別 id）。
+拡張候補（未実装）: 欧州CPI `CP0000EZ19M086NEST`、米PPI `PPIFID`。
 
 ---
 
-## 9. FRED 差し込み口（実装しない。形だけ）
+## 9. GitHub Pages / 権限
 
-`fred.py` の想定インタフェース:
-
-- `fetch(series_id: str, start, end) -> DataFrame`
-- 環境変数 `FRED_API_KEY` が無ければ即 missing
-- config 例:
-
-```yaml
-id: hy_oas
-provider: fred
-fred_series: BAMLH0A0HYM2
-```
-
-v1 で接続コードを本番呼び出ししてはいけない（キーも不要）。
-
-候補シリーズ（後付け用メモ）:
-
-| 指標 | 想定 FRED id |
-|------|----------------|
-| TIPS 10年実質 | DFII10 |
-| HY OAS | BAMLH0A0HYM2 |
-| MOVE | MOVEINDEX（利用可否は実装時に確認） |
-| 米2年 | DGS2 |
-| 米10年 | DGS10 |
-| 米30年 | DGS30 |
+- public リポジトリ。閲覧制限なし。
+- Actions は secret `FRED_API_KEY` / `EODHD_API_KEY` を渡す。未設定でもジョブ成功。
+- Pages: Branch `main` / folder `/docs`。
 
 ---
 
-## 10. GitHub Pages / 権限
+## 10. 受け入れ条件
 
-- 閲覧制限なし。public リポジトリでよい。
-- `GITHUB_TOKEN` の `contents: write` で JSON を main に push。
-- Pages はリポジトリ Settings → Pages → Branch: `main` / folder: `/docs`。
-- カスタムドメインなし。
-
----
-
-## 11. 実装時の作業順（このリポジトリではまだやらない）
-
-1. `config/instruments.yaml` を本セクション8から起こす。
-2. 取得・計算スクリプト。ローカルで1回 Yahoo を叩いて欠測シンボルを調整。
-3. `docs/index.html`。
-4. `.github/workflows/update.yml`。
-5. Pages 設定と README。
-
----
-
-## 12. 受け入れ条件（実装フェーズ用）
-
-- ブラウザで `docs/index.html` を開き、JSON があれば表が出る。
-- 必須行（S&P500, NASDAQ100, 日経, TOPIX, 米10年, DXY, USD/JPY, VIX）が、Yahoo が生きていれば `ok`。
-- missing 行が表から消えない。
+- `docs/index.html` は JSON があれば表を出す。セクション 7 がある。
+- 必須行（S&P500, NASDAQ100, 日経, TOPIX, 米10年, DXY, USD/JPY, VIX）が、ソースが生きていれば `ok`。
+- FRED キーありなら米CPI・米コアCPI・TIPS・HY-OAS が `ok`。
+- missing 行が表から消えない。FRA-OIS 行は存在しない。
 - 認証画面がない。
-- Actions の YAML に平日 cron と `workflow_dispatch` がある。
+- Actions に平日 cron と `workflow_dispatch` がある。
+- `pytest -q` が全件成功する。
