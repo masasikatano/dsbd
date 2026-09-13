@@ -22,6 +22,7 @@ USER_AGENT = "dsbd-dashboard/1.0 (+https://github.com/)"
 ERA_OFFSET = {"M": 1867, "T": 1911, "S": 1925, "H": 1988, "R": 2018}
 ERA_RE = re.compile(r"^([MTSHR])(\d+)\.(\d+)\.(\d+)$")
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+YYYYMM_RE = re.compile(r"^(\d{4})(\d{2})$")
 BOE_IADB = (
     "https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp"
     "?csv.x=yes&Datefrom={start}&Dateto={end}&SeriesCodes={code}"
@@ -30,7 +31,7 @@ BOE_IADB = (
 
 
 class OfficialProvider:
-    """Fetches daily yields from MoF / Bundesbank / Bank of England CSVs."""
+    """Fetches official CSVs (MoF / Bundesbank / BoE / Statistics Bureau CPI)."""
 
     name = "official"
 
@@ -82,6 +83,8 @@ def _parse(fmt: str, raw: bytes, inst: dict) -> pd.Series | None:
         return _parse_bundesbank_csv(raw)
     if fmt == "boe_iadb":
         return _parse_boe_iadb(raw, inst.get("official_series") or inst.get("official_id"))
+    if fmt == "stat_cpi":
+        return _parse_stat_cpi(raw, inst.get("official_column") or "総合")
     log.warning("unknown official_format %s", fmt)
     return None
 
@@ -152,6 +155,55 @@ def _parse_bundesbank_csv(raw: bytes) -> pd.Series | None:
         dates.append(pd.Timestamp(key))
         values.append(val)
     return _series(dates, values)
+
+
+def _parse_stat_cpi(raw: bytes, column: str) -> pd.Series | None:
+    """Statistics Bureau of Japan nationwide CPI item CSV (zmiYYYYaa.csv).
+
+    Header row starts with 類・品目; monthly rows are YYYYMM in the first column.
+    """
+    text = _decode_jp(raw)
+    reader = csv.reader(io.StringIO(text))
+    header: list[str] | None = None
+    col_idx: int | None = None
+    dates: list[pd.Timestamp] = []
+    values: list[float] = []
+    for row in reader:
+        if not row:
+            continue
+        cells = [c.strip() for c in row]
+        if header is None and cells and (cells[0] in {"類・品目", "Group/Item"} or column in cells):
+            header = cells
+            try:
+                col_idx = header.index(column)
+            except ValueError:
+                log.warning("stat cpi column %s not found in %s", column, header[:8])
+                return None
+            continue
+        if header is None or col_idx is None:
+            continue
+        ts = _parse_yyyymm(cells[0])
+        if ts is None or col_idx >= len(cells):
+            continue
+        val = _to_float(cells[col_idx])
+        if val is None:
+            continue
+        dates.append(ts)
+        values.append(val)
+    return _series(dates, values)
+
+
+def _parse_yyyymm(text: str) -> pd.Timestamp | None:
+    m = YYYYMM_RE.match((text or "").strip())
+    if not m:
+        return None
+    year, month = int(m.group(1)), int(m.group(2))
+    if month < 1 or month > 12:
+        return None
+    try:
+        return pd.Timestamp(year, month, 1)
+    except ValueError:
+        return None
 
 
 def _parse_boe_iadb(raw: bytes, series_code: str | None) -> pd.Series | None:

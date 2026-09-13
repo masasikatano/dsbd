@@ -12,6 +12,7 @@ from src.providers.official import (
     _parse_boe_iadb,
     _parse_bundesbank_csv,
     _parse_mof_jgb,
+    _parse_stat_cpi,
     parse_jp_era_date,
 )
 
@@ -61,6 +62,21 @@ def test_parse_boe_iadb():
     assert s is not None
     assert len(s) == 2
     assert float(s.iloc[-1]) == pytest.approx(5.1922)
+
+
+def test_parse_stat_cpi():
+    csv = (
+        "類・品目,総合,食料\n"
+        "Group/Item,All items,Food\n"
+        "類・品目符号(Group/Item code),0001,0002\n"
+        "202606,101.560,102.389\n"
+        "202607,102.039,103.122\n"
+        "202608,,\n"
+    ).encode("cp932")
+    s = _parse_stat_cpi(csv, "総合")
+    assert s is not None
+    assert len(s) == 2
+    assert float(s.loc["2026-07-01"]) == pytest.approx(102.039)
 
 
 def test_official_provider_no_format():

@@ -815,9 +815,14 @@ instruments:
     section: s7
     market: 日本
     name: CPI 前年比
-    provider: fred
-    fred_series: JPNCPIALLMINMEI
+    provider: official
+    official_format: stat_cpi
+    official_id: Stat-CPI-All
+    official_column: "総合"
+    official_urls:
+      - https://www.stat.go.jp/data/cpi/2025/csv/zmi2025aa.csv
+    stale_after_days: 60
     priority: advanced
     unit: 前年比%
     monthly: true
-    note: OECD経由の日本CPI
+    note: 総務省統計局 全国総合（2025年基準）。指数から前月比・前年比を算出
