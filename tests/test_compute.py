@@ -192,3 +192,13 @@ def test_monthly_metrics_yoy():
     m = monthly_metrics(s)
     assert m["last"] == pytest.approx(values[-1])
     assert pytest.approx(m["yoy_pct"]) == (values[-1] / values[-13] - 1.0) * 100.0
+
+
+def test_monthly_metrics_quarterly_yoy():
+    values = [1.0, 1.1, 1.2, 1.3, 2.0]
+    dates = pd.date_range("2025-03-01", periods=5, freq="3MS")
+    s = pd.Series(values, index=dates, dtype=float)
+    m = monthly_metrics(s, periods_per_year=4)
+    assert m["last"] == 2.0
+    assert pytest.approx(m["mom_pct"]) == (2.0 / 1.3 - 1.0) * 100.0
+    assert pytest.approx(m["yoy_pct"]) == (2.0 / 1.0 - 1.0) * 100.0

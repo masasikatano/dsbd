@@ -852,3 +852,18 @@ instruments:
     unit: 前年比%
     monthly: true
     note: 総務省統計局 全国総合（2025年基準）。指数から前月比・前年比を算出
+  - id: jp_tankan_output_1y
+    section: s7
+    market: 日本
+    name: 短観 販売価格見通し（1年後）
+    provider: official
+    official_format: boj_api
+    official_db: CO
+    official_series: TK99F0000201HCQ00000
+    official_id: TK99F0000201HCQ00000
+    stale_after_days: 120
+    priority: advanced
+    unit: "%"
+    monthly: true
+    quarterly: true
+    note: 日銀短観・全規模全産業の販売価格見通し（1年後、平均）。四半期。前月比列は前期比

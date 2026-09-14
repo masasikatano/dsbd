@@ -298,6 +298,12 @@ def test_config_includes_unrate_and_ism():
     assert ism["provider"] == "official"
     assert ism["official_format"] == "ism_html"
     assert ism["thresholds"]["below_is_red"] == 50
+    tankan = by_id["jp_tankan_output_1y"]
+    assert tankan["monthly"] is True
+    assert tankan["quarterly"] is True
+    assert tankan["provider"] == "official"
+    assert tankan["official_format"] == "boj_api"
+    assert tankan["official_series"] == "TK99F0000201HCQ00000"
 
 
 def test_base_item_monthly_flag():
@@ -315,6 +321,15 @@ def test_ok_from_series_monthly():
     assert item["mom_pct"] is not None
     assert "chg_1d_pct" not in item
     assert "ytd_pct" not in item
+
+
+def test_ok_from_series_quarterly_yoy_uses_four_periods():
+    inst = {"id": "jp_tankan_output_1y", "name": "短観", "monthly": True, "quarterly": True}
+    dates = pd.date_range("2025-03-01", periods=5, freq="3MS")
+    s = pd.Series([1.0, 1.1, 1.2, 1.3, 2.0], index=dates, dtype=float)
+    item, _ = ok_from_series(inst, s)
+    assert item["quarterly"] is True
+    assert pytest.approx(item["yoy_pct"]) == 100.0
 
 
 def test_ok_from_series_daily():

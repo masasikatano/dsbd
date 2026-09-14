@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import logging
 import re
 import urllib.error
@@ -28,6 +29,10 @@ BOE_IADB = (
     "?csv.x=yes&Datefrom={start}&Dateto={end}&SeriesCodes={code}"
     "&CSVF=TN&UsingCodes=Y&VPD=Y&VFD=N"
 )
+BOJ_API = (
+    "https://www.stat-search.boj.or.jp/api/v1/getDataCode"
+    "?format=json&lang=jp&db={db}&startDate={start}&endDate={end}&code={code}"
+)
 
 
 ISM_YM_VALUE_RE = re.compile(
@@ -38,8 +43,8 @@ ISM_YM_VALUE_RE = re.compile(
 
 
 class OfficialProvider:
-    """Fetches official CSVs (MoF / Bundesbank / BoE / Statistics Bureau CPI)
-    and the ISM manufacturing PMI HTML table used when FRED NAPM is unavailable."""
+    """Fetches official CSVs (MoF / Bundesbank / BoE / Statistics Bureau CPI),
+    BOJ time-series API (Tankan), and the ISM manufacturing PMI HTML table."""
 
     name = "official"
 
@@ -64,6 +69,11 @@ def _fetch_series(inst: dict) -> pd.Series | None:
         if not code:
             return None
         urls = [_boe_url(code)]
+    if fmt == "boj_api":
+        code = inst.get("official_series") or inst.get("official_id")
+        if not code:
+            return None
+        urls = [_boj_api_url(inst, code)]
     if not urls:
         return None
 
@@ -95,8 +105,76 @@ def _parse(fmt: str, raw: bytes, inst: dict) -> pd.Series | None:
         return _parse_stat_cpi(raw, inst.get("official_column") or "総合")
     if fmt == "ism_html":
         return _parse_ism_html(raw)
+    if fmt == "boj_api":
+        return _parse_boj_api(raw, inst.get("official_series") or inst.get("official_id"))
     log.warning("unknown official_format %s", fmt)
     return None
+
+
+def _boj_api_url(inst: dict, code: str, years: int = 8) -> str:
+    db = inst.get("official_db") or "CO"
+    today = date.today()
+    start_year = today.year - years
+    start = f"{start_year}01"
+    end_q = (today.month - 1) // 3 + 1
+    end = f"{today.year}{end_q:02d}"
+    return BOJ_API.format(
+        db=urllib.parse.quote(str(db)),
+        start=start,
+        end=end,
+        code=urllib.parse.quote(code),
+    )
+
+
+def _parse_boj_api(raw: bytes, series_code: str | None) -> pd.Series | None:
+    """Parse BOJ time-series search API JSON (getDataCode)."""
+    try:
+        payload = json.loads(raw.decode("utf-8-sig", errors="replace"))
+    except json.JSONDecodeError:
+        return None
+    if int(payload.get("STATUS") or 0) != 200:
+        log.warning("boj api status %s", payload.get("STATUS"))
+        return None
+    rows = payload.get("RESULTSET") or []
+    chosen = None
+    for row in rows:
+        if series_code and row.get("SERIES_CODE") != series_code:
+            continue
+        chosen = row
+        break
+    if chosen is None and rows:
+        chosen = rows[0]
+    if not chosen:
+        return None
+    values_block = chosen.get("VALUES") or {}
+    dates_raw = values_block.get("SURVEY_DATES") or []
+    vals_raw = values_block.get("VALUES") or []
+    dates: list[pd.Timestamp] = []
+    values: list[float] = []
+    for raw_date, raw_val in zip(dates_raw, vals_raw):
+        if raw_val is None:
+            continue
+        ts = _parse_yyyyqq(raw_date)
+        val = _to_float(str(raw_val)) if not isinstance(raw_val, (int, float)) else float(raw_val)
+        if ts is None or val is None:
+            continue
+        dates.append(ts)
+        values.append(val)
+    return _series(dates, values)
+
+
+def _parse_yyyyqq(value) -> pd.Timestamp | None:
+    """Map BOJ YYYYQQ (quarter) to the survey month (Mar/Jun/Sep/Dec)."""
+    text = str(value or "").strip()
+    if len(text) != 6 or not text.isdigit():
+        return None
+    year, quarter = int(text[:4]), int(text[4:6])
+    if quarter < 1 or quarter > 4:
+        return None
+    try:
+        return pd.Timestamp(year, quarter * 3, 1)
+    except ValueError:
+        return None
 
 
 def _boe_url(code: str, years: int = 2) -> str:

@@ -77,6 +77,7 @@ def base_item(inst: dict) -> dict:
         "provider": inst.get("provider") or "yahoo",
         "thresholds": inst.get("thresholds") or {},
         "monthly": bool(inst.get("monthly")),
+        "quarterly": bool(inst.get("quarterly")),
     }
 
 
@@ -88,7 +89,11 @@ def missing(inst: dict, error: str) -> dict:
 
 def ok_from_series(inst: dict, series: pd.Series) -> tuple[dict, pd.Series]:
     series = maybe_scale_series(series, inst.get("scale_if_gt"))
-    m = monthly_metrics(series) if inst.get("monthly") else metrics(series)
+    if inst.get("monthly"):
+        periods = 4 if inst.get("quarterly") else 12
+        m = monthly_metrics(series, periods_per_year=periods)
+    else:
+        m = metrics(series)
     item = base_item(inst)
     item.update({"status": "ok", **m, "history": history_points(series)})
     return item, series

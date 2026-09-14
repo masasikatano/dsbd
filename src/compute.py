@@ -71,11 +71,12 @@ def metrics(series: pd.Series) -> dict:
     return out
 
 
-def monthly_metrics(series: pd.Series) -> dict:
-    """Metrics for monthly economic series such as CPI.
+def monthly_metrics(series: pd.Series, periods_per_year: int = 12) -> dict:
+    """Metrics for monthly (or quarterly) economic series such as CPI.
 
-    Returns latest value, observation date, month-over-month change and
+    Returns latest value, observation date, previous-period change and
     year-over-year change. Daily-style metrics are omitted.
+    `periods_per_year` is 12 for monthly and 4 for quarterly series.
     """
     s = series.dropna().astype(float)
     out = {
@@ -94,9 +95,9 @@ def monthly_metrics(series: pd.Series) -> dict:
     if len(s) >= 2 and float(s.iloc[-2]) != 0:
         out["mom_pct"] = (pn / float(s.iloc[-2]) - 1.0) * 100.0
 
-    # Year-over-year: compare with the value 12 months earlier.
-    if len(s) >= 13 and float(s.iloc[-13]) != 0:
-        out["yoy_pct"] = (pn / float(s.iloc[-13]) - 1.0) * 100.0
+    lag = max(int(periods_per_year), 1)
+    if len(s) >= lag + 1 and float(s.iloc[-(lag + 1)]) != 0:
+        out["yoy_pct"] = (pn / float(s.iloc[-(lag + 1)]) - 1.0) * 100.0
 
     return out
 

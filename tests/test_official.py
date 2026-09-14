@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -10,10 +11,12 @@ from src.providers.base import ErrorCode
 from src.providers.official import (
     OfficialProvider,
     _parse_boe_iadb,
+    _parse_boj_api,
     _parse_bundesbank_csv,
     _parse_ism_html,
     _parse_mof_jgb,
     _parse_stat_cpi,
+    _parse_yyyyqq,
     parse_jp_era_date,
 )
 
@@ -92,6 +95,32 @@ def test_parse_stat_cpi():
     assert s is not None
     assert len(s) == 2
     assert float(s.loc["2026-07-01"]) == pytest.approx(102.039)
+
+
+def test_parse_yyyyqq():
+    assert _parse_yyyyqq(201401).strftime("%Y-%m-%d") == "2014-03-01"
+    assert _parse_yyyyqq("202602").strftime("%Y-%m-%d") == "2026-06-01"
+    assert _parse_yyyyqq("202604").strftime("%Y-%m-%d") == "2026-12-01"
+    assert _parse_yyyyqq("202605") is None
+
+
+def test_parse_boj_api():
+    payload = {
+        "STATUS": 200,
+        "RESULTSET": [
+            {
+                "SERIES_CODE": "TK99F0000201HCQ00000",
+                "VALUES": {
+                    "SURVEY_DATES": [202601, 202602, 202603],
+                    "VALUES": [3.1, 3.7, None],
+                },
+            }
+        ],
+    }
+    s = _parse_boj_api(json.dumps(payload).encode("utf-8"), "TK99F0000201HCQ00000")
+    assert s is not None
+    assert len(s) == 2
+    assert float(s.loc["2026-06-01"]) == pytest.approx(3.7)
 
 
 def test_official_provider_no_format():

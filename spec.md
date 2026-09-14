@@ -16,7 +16,7 @@
 - 認証・IP制限・非公開化はしない。
 - 平日1日1回、米国クローズ後の終値ベースで指標を更新する。
 - セクション 1〜6 を日次5指標の表として載せる。
-- セクション 7「マクロ指標（月次）」に米失業率・ISM製造業 PMI・CPI を載せる（最新値 / 前月比 / 前年比 / 発表日）。
+- セクション 7「マクロ指標（月次）」に米失業率・ISM製造業 PMI・CPI・日銀短観の企業物価見通しを載せる（最新値 / 前月比 / 前年比 / 発表日）。
 - 優先度は行バッジ（`must` / `next` / `advanced`）。折りたたみ・タブにしない。
 - 欠測しても行は残し「データなし」と出す。
 
@@ -64,7 +64,7 @@ GitHub Pages（Settings: Deploy from branch main / /docs）
 | `src/providers/yahoo.py` | Yahoo Finance |
 | `src/providers/fred.py` | FRED（キー未設定なら missing） |
 | `src/providers/eodhd.py` | EODHD（Yahoo が日次履歴を返さない銘柄） |
-| `src/providers/official.py` | 財務省・Bundesbank・英蘭銀行・総務省 CPI の CSV |
+| `src/providers/official.py` | 財務省・Bundesbank・英蘭銀行・総務省 CPI の CSV、日銀時系列API |
 | `docs/index.html` | ダッシュボード |
 | `docs/detail.html` | 指標詳細 |
 | `docs/common.js` | UI 共通 |
@@ -88,7 +88,7 @@ Pages 用デプロイ Action は使わない。`GITHUB_TOKEN` に `contents: wri
 | `yahoo` | 主戦。`symbol` と任意の `symbol_fallbacks` |
 | `fred` | TIPS 10年、HY-OAS、米 CPI / コア CPI。キー無しは missing |
 | `eodhd` | CSI 300、VN-Index、USD/CNH（Yahoo が日次履歴を返さない） |
-| `official` | 日独英 10 年、日本 CPI、ISM製造業 PMI（HTML表） |
+| `official` | 日独英 10 年、日本 CPI、ISM製造業 PMI（HTML表）、日銀短観（時系列API） |
 | `derived` | `us_2s10s` / `us_10s30s`。依存先 missing なら自身も missing |
 
 フォールバック（オーケストレータ側。プロバイダは疎結合のまま）:
@@ -151,6 +151,8 @@ Pages 用デプロイ Action は使わない。`GITHUB_TOKEN` に `contents: wri
 | 発表日 | 系列の `date`（リリース日ではなく観測月の日付） |
 
 CPI は発表日以外は前回値が残る。備考で説明する。
+
+四半期指標（`quarterly: true`、短観）もセクション7の月次表に載せる。前年比は4期前との比。前月比列は前期比（直近観測同士の比）。
 
 ---
 
@@ -297,6 +299,7 @@ DXY `DX-Y.NYB`（must）、USD/EUR・GBP・AUD、USD/CNH（EODHD `USDCNH.FOREX`�
 | us_cpi_yoy | 米CPI 前年比 | FRED `CPIAUCSL`（季調済） | next |
 | us_core_cpi_yoy | 米コアCPI 前年比 | FRED `CPILFESL` | next |
 | jp_cpi_yoy | 日CPI 前年比 | 総務省 全国総合 2025年基準 CSV。指数から前月比・前年比 | advanced |
+| jp_tankan_output_1y | 短観 販売価格見通し（1年後） | 日銀時系列API `getDataCode` DB `CO` 系列 `TK99F0000201HCQ00000`（全規模全産業・平均）。四半期 | advanced |
 
 拡張候補（未実装）: 欧州CPI `CP0000EZ19M086NEST`、米PPI `PPIFID`。
 
