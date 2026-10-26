@@ -231,21 +231,28 @@
         return;
       }
       const data = await res.json();
-      const dateLabel = (() => {
-        if (!data.generated_at) return "—";
-        const d = new Date(data.generated_at);
-        if (Number.isNaN(d.getTime())) return "—";
-        const y = d.getFullYear();
-        const m = d.getMonth() + 1;
-        const day = d.getDate();
+      const fmt = (d) => {
         const h24 = d.getHours();
         const ampm = h24 < 12 ? "午前" : "午後";
         const h = h24 % 12 || 12;
-        const min = d.getMinutes();
-        return `${y}年${m}月${day}日 ${ampm}${h}時${min}分`;
+        return `${d.getMonth() + 1}月${d.getDate()}日 ${ampm}${h}時${d.getMinutes()}分`;
+      };
+      const generated = data.generated_at ? new Date(data.generated_at) : null;
+      const nextRun = (() => {
+        // 実行は平日 22:00 UTC = 火〜土 7:00 JST。現在時刻より未来の最初の実行時刻。
+        const now = Date.now();
+        const d = new Date(now + 9 * 3600e3); // JST
+        d.setUTCDate(d.getUTCDate() + 1);
+        d.setUTCHours(7, 0, 0, 0);
+        while (d.getUTCDay() === 0 || d.getUTCDay() === 1) d.setUTCDate(d.getUTCDate() + 1);
+        return new Date(d.getTime() - 9 * 3600e3);
       })();
+      const dateLabel = !generated || Number.isNaN(generated.getTime())
+        ? "—"
+        : `${generated.getFullYear()}年${fmt(generated)}`;
+      const nextLabel = nextRun ? fmt(nextRun).replace(/ 午前7時0分$/, "") : "—";
       document.getElementById("meta").textContent =
-        `最終更新: ${dateLabel}　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
+        `最終更新: ${dateLabel}（次回更新${nextLabel} 午前7時頃）　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
       const banner = document.getElementById("banner");
       if (data.missing_count) {
         banner.hidden = false;
