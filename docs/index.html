@@ -231,8 +231,21 @@
         return;
       }
       const data = await res.json();
+      const dateLabel = (() => {
+        if (!data.generated_at) return "—";
+        const d = new Date(data.generated_at);
+        if (Number.isNaN(d.getTime())) return "—";
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        const h24 = d.getHours();
+        const ampm = h24 < 12 ? "午前" : "午後";
+        const h = h24 % 12 || 12;
+        const min = d.getMinutes();
+        return `${y}年${m}月${day}日 ${ampm}${h}時${min}分`;
+      })();
       document.getElementById("meta").textContent =
-        `最終更新（JST）: ${data.generated_at || "—"}　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
+        `最終更新: ${dateLabel}　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
       const banner = document.getElementById("banner");
       if (data.missing_count) {
         banner.hidden = false;
