@@ -2,8 +2,8 @@ name: update-dashboard
 
 on:
   schedule:
-    # 平日 22:00 UTC = 平日 7:00 JST（翌日）。前日の米国終値が出揃う時刻。
-    - cron: "0 22 * * 1-5"
+    # JST 平日 7:00（JSTはUTC+9で夏時間なし）= UTC 日〜木 22:00。前日の米国終値が出揃う時刻。
+    - cron: "0 22 * * 0-4"
   workflow_dispatch:
 
 permissions:
