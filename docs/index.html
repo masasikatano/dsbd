@@ -244,7 +244,7 @@
         const d = new Date(now + 9 * 3600e3); // JST
         d.setUTCDate(d.getUTCDate() + 1);
         d.setUTCHours(7, 41, 0, 0);
-        while (d.getUTCDay() === 0 || d.getUTCDay() === 1) d.setUTCDate(d.getUTCDate() + 1);
+        while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1); // JST の日曜・土曜は除外
         return new Date(d.getTime() - 9 * 3600e3);
       })();
       const dateLabel = !generated || Number.isNaN(generated.getTime())
