@@ -36,8 +36,9 @@ BOJ_API = (
 
 
 ISM_YM_VALUE_RE = re.compile(
-    r'data-original-value="(\d{4})年(\d{2})月"[^>]*>.*?</td>\s*'
-    r'<td[^>]*data-original-value="([0-9]+(?:\.[0-9]+)?)"',
+    r'(?:data-original-value="(\d{4})年(\d{2})月"[^>]*>.*?</td>\s*'
+    r'<td[^>]*data-original-value="([0-9]+(?:\.[0-9]+)?)")'
+    r'|(?:<td>(\d{4})年(\d{1,2})月</td>\s*<td[^>]*>\s*([0-9]+(?:\.[0-9]+)?)\s*</td>)',
     re.S,
 )
 
@@ -299,7 +300,12 @@ def _parse_ism_html(raw: bytes) -> pd.Series | None:
     text = raw.decode("utf-8-sig", errors="replace")
     dates: list[pd.Timestamp] = []
     values: list[float] = []
-    for year_s, month_s, val_s in ISM_YM_VALUE_RE.findall(text):
+    for groups in ISM_YM_VALUE_RE.findall(text):
+        year_s, month_s, val_s = next(
+            (groups[i:i + 3] for i in (0, 3) if groups[i]), ("", "", "")
+        )
+        if not year_s:
+            continue
         year, month = int(year_s), int(month_s)
         if month < 1 or month > 12:
             continue

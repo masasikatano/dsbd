@@ -2,8 +2,9 @@ name: update-dashboard
 
 on:
   schedule:
-    # JST 平日 7:00（JSTはUTC+9で夏時間なし）= UTC 日〜木 22:00。前日の米国終値が出揃う時刻。
-    - cron: "0 22 * * 0-4"
+    # JST 平日 7:41（JSTはUTC+9で夏時間なし）= UTC 日〜木 22:41。前日の米国終値が出揃う時刻。
+    # :00 は GitHub Actions のスケジュール実行が集中し遅延しやすいため分をずらしている。
+    - cron: "41 22 * * 0-4"
   workflow_dispatch:
 
 permissions:
