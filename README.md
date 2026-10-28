@@ -27,7 +27,7 @@ pytest -q
 
 リポジトリ Settings → Pages → **Deploy from a branch** → Branch: `main`、Folder: `/docs`。カスタムドメインは使いません。閲覧制限はありません。
 
-定期更新は Oracle Cloud VM（VM.Standard.E2.1.Micro）の cron が JST 平日 6:30（前日の米国終値が出揃う時刻。GitHub Actions のスケジュール実行はキューイングで数時間遅延するため移管）に `run_update.sh` を実行し、`latest.json` を `[skip ci]` 付きで `main` に push します。GitHub Actions（`.github/workflows/update.yml`）は手動 `workflow_dispatch` のみ（Oracle VM 停止時の再実行用）。
+定期更新は Oracle Cloud VM（VM.Standard.E2.1.Micro）の cron が JST 平日 6:30（米国終値確定直後）と 20:00（アジア全市場終値確定直後）の1日2回 `run_update.sh` を実行し、`latest.json` を `[skip ci]` 付きで `main` に push します。GitHub Actions（`.github/workflows/update.yml`）は手動 `workflow_dispatch` のみ（Oracle VM 停止時の再実行用）。
 
 TIPS 10年・HY-OAS・MOVE・先進国 10 年・**米CPI（月次）**のフォールバックには [FRED](https://fred.stlouisfed.org/) を使います。日本 CPI は総務省統計局の全国総合（2025年基準 CSV）を一次ソースにします。日本・独・英の 10 年利回りは財務省・Bundesbank・英蘭銀行の日次 CSV を一次ソースにし、欠測時だけ FRED OECD へ落とします。CSI 300・VN-Index・USD/CNH は Yahoo が日次履歴を返さないため [EODHD](https://eodhd.com/) から約1年分を取ります。ローカルは `.env` に `FRED_API_KEY` と `EODHD_API_KEY`（git 対象外）。Actions は同名のリポジトリ secret を渡します。未設定でもジョブは成功し、依存行だけ「データなし」になります。キーを JSON やログに出しません。
 
