@@ -239,20 +239,20 @@
       };
       const generated = data.generated_at ? new Date(data.generated_at) : null;
       const nextRun = (() => {
-        // 実行は UTC 22:41 日〜木 = 月〜金 7:41 JST。現在時刻より未来の最初の実行時刻。
+        // 実行は Oracle VM の cron、JST 平日 6:30。現在時刻より未来の最初の実行時刻。
         const now = Date.now();
         const d = new Date(now + 9 * 3600e3); // JST
         d.setUTCDate(d.getUTCDate() + 1);
-        d.setUTCHours(7, 41, 0, 0);
+        d.setUTCHours(6, 30, 0, 0);
         while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1); // JST の日曜・土曜は除外
         return new Date(d.getTime() - 9 * 3600e3);
       })();
       const dateLabel = !generated || Number.isNaN(generated.getTime())
         ? "—"
         : `${generated.getFullYear()}年${fmt(generated)}`;
-      const nextLabel = nextRun ? fmt(nextRun).replace(/ 午前7時41分$/, "") : "—";
+      const nextLabel = nextRun ? fmt(nextRun).replace(/ 午前6時30分$/, "") : "—";
       document.getElementById("meta").textContent =
-        `最終更新: ${dateLabel}（次回更新${nextLabel} 午前7時41分頃）　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
+        `最終更新: ${dateLabel}（次回更新${nextLabel} 午前6時30分頃）　ok ${data.ok_count ?? "—"} / missing ${data.missing_count ?? "—"}`;
       const banner = document.getElementById("banner");
       if (data.missing_count) {
         banner.hidden = false;
