@@ -1,10 +1,9 @@
 name: update-dashboard
 
 on:
-  schedule:
-    # JST 平日 7:41（JSTはUTC+9で夏時間なし）= UTC 日〜木 22:41。前日の米国終値が出揃う時刻。
-    # :00 は GitHub Actions のスケジュール実行が集中し遅延しやすいため分をずらしている。
-    - cron: "41 22 * * 0-4"
+  # スケジュール実行は Oracle Cloud VM の cron（JST 平日 6:30）に移管した。
+  # GitHub Actions のスケジュール実行はキューイングで数時間遅延することがあるため。
+  # 手動での再実行が必要な場合は workflow_dispatch を使う。
   workflow_dispatch:
 
 permissions:
