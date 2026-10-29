@@ -30,6 +30,8 @@ def test_common_js_exists_and_exports_expected_functions():
     assert "function bindClick" in text
     assert "function lastClass" in text
     assert "below_is_red" in text
+    assert "above_is_red" in text
+    assert "warn_above" in text
     assert "function strokeColor" in text
     assert "encodeURIComponent" in text
 

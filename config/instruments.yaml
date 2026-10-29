@@ -575,6 +575,15 @@ instruments:
     unit: 指数
     note: Yahoo ^MOVE
     thresholds: {wider_is_red: true}
+  - id: skew
+    section: s5
+    market: 米国
+    name: SKEW
+    symbol: "^SKEW"
+    priority: advanced
+    unit: 指数
+    note: Cboe SKEW。S&P 500 のテールリスク需要。100が基準、130超で警戒、140超で高水準。絶対水準で見る
+    thresholds: {warn_above: 130, above_is_red: 140}
   - id: btc
     section: s5
     market: 暗号資産

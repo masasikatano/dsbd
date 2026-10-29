@@ -25,6 +25,8 @@ function lastClass(item) {
   if (th.invert_red && item.last != null && item.last < 0) return "down";
   if (th.wider_is_red && item.chg_1d_pct != null && item.chg_1d_pct > 0) return "down";
   if (th.below_is_red != null && item.last != null && item.last < th.below_is_red) return "down";
+  if (th.above_is_red != null && item.last != null && item.last >= th.above_is_red) return "down";
+  if (th.warn_above != null && item.last != null && item.last >= th.warn_above) return "warn";
   return "";
 }
 

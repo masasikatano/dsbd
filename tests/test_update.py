@@ -306,6 +306,20 @@ def test_config_includes_unrate_and_ism():
     assert tankan["official_series"] == "TK99F0000201HCQ00000"
 
 
+def test_config_includes_skew():
+    from src.update import load_config
+
+    cfg = load_config()
+    by_id = {i["id"]: i for i in cfg["instruments"]}
+    skew = by_id["skew"]
+    assert skew["section"] == "s5"
+    assert skew["symbol"] == "^SKEW"
+    assert skew.get("provider", "yahoo") == "yahoo"
+    assert skew["priority"] == "advanced"
+    assert skew["thresholds"]["warn_above"] == 130
+    assert skew["thresholds"]["above_is_red"] == 140
+
+
 def test_base_item_monthly_flag():
     inst = {"id": "us_cpi_yoy", "monthly": True}
     item = base_item(inst)

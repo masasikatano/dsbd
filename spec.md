@@ -163,6 +163,7 @@ CPI は発表日以外は前回値が残る。備考で説明する。
 - **VIX**: \<20 ニュートラル、20–30 黄、≥30 赤。
 - **2s10s**: 負（逆転）なら赤。正はニュートラル。
 - **MOVE / HY-OAS**: `thresholds.wider_is_red` で拡大＝赤。
+- **SKEW**: `thresholds.warn_above`（130）以上で黄、`thresholds.above_is_red`（140）以上で赤。絶対水準で判定する。
 - **ISM製造業 PMI**: `thresholds.below_is_red`（50）未満なら赤。
 
 ---
@@ -267,6 +268,7 @@ DXY `DX-Y.NYB`（must）、USD/EUR・GBP・AUD、USD/CNH（EODHD `USDCNH.FOREX`�
 |----|------|------|----------|
 | vix | VIX | `^VIX` | must |
 | move | MOVE | Yahoo `^MOVE` | advanced |
+| skew | SKEW | `^SKEW` | advanced |
 | btc | BTC | `BTC-USD` | next |
 | eth | ETH | `ETH-USD` | next |
 
